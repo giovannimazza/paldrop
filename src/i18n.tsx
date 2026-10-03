@@ -110,6 +110,9 @@ const it = {
   "errors.LIMIT_PHOTO_COUNT": "Limite di 20 foto raggiunto.",
   "errors.UPLOAD_INVALID": "Caricamento non riuscito. Riprova.",
   "errors.NETWORK": "Connessione assente. Riprova.",
+  "errors.PERMISSION_DENIED":
+    "Permesso di archiviazione negato: consenti l’accesso alle foto nelle impostazioni del telefono per salvare le immagini.",
+  "errors.SAVE_FAILED": "Salvataggio non riuscito. Controlla lo spazio disponibile e riprova.",
   "errors.UNKNOWN": "Qualcosa è andato storto. Riprova.",
 
   "common.loading": "Caricamento…",
@@ -255,6 +258,9 @@ const en: Record<TKey, string> = {
   "errors.LIMIT_PHOTO_COUNT": "20 photo limit reached.",
   "errors.UPLOAD_INVALID": "Upload failed. Try again.",
   "errors.NETWORK": "No connection. Try again.",
+  "errors.PERMISSION_DENIED":
+    "Storage permission denied: allow photo access in the phone settings to save images.",
+  "errors.SAVE_FAILED": "Could not save the photo. Check free space and try again.",
   "errors.UNKNOWN": "Something went wrong. Try again.",
 
   "common.loading": "Loading…",

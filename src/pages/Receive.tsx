@@ -220,6 +220,21 @@ export function Receive() {
     }
   }, [backend, extendSession, token]);
 
+  const handleDownload = useCallback(async (photo: Photo) => {
+    if (!photo.url) return;
+    setErrorCode(null);
+    try {
+      await downloadFile(
+        photo.url,
+        ensureExtension(photo.fileName, photo.mimeType),
+        photo.mimeType
+      );
+    } catch (error) {
+      // Surface why nothing was saved (denied permission, no space, ...).
+      setErrorCode(errorCodeOf(error));
+    }
+  }, []);
+
   const handleStartServer = useCallback(async () => {
     setServerBusy(true);
     setServerError(false);
@@ -507,13 +522,7 @@ export function Receive() {
                         photo={photo}
                         lang={lang}
                         labels={labels}
-                        onDownload={() =>
-                          downloadFile(
-                            photo.url as string,
-                            ensureExtension(photo.fileName, photo.mimeType),
-                            photo.mimeType
-                          )
-                        }
+                        onDownload={() => handleDownload(photo)}
                         onDelete={() =>
                           runPhotoAction((photoId) => deletePhoto(backend, token, photoId), photo.id)
                         }

@@ -1,5 +1,6 @@
 package com.giovannimazza.paldrop;
 
+import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -9,10 +10,14 @@ import android.os.Environment;
 import android.provider.MediaStore;
 
 import com.getcapacitor.JSObject;
+import com.getcapacitor.Logger;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
+import com.getcapacitor.util.PermissionHelper;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -28,11 +33,21 @@ import java.net.URL;
  * attribute for cross-origin URLs, so downloads must happen natively.
  * Images land in Pictures/Paldrop (visible in the gallery), everything
  * else in Download/Paldrop. On Android 10+ this uses MediaStore, which
- * needs no storage permission.
+ * needs no storage permission; on Android 9 and lower the WRITE permission
+ * is requested through the system prompt before the first save.
  */
-@CapacitorPlugin(name = "MediaSave")
+@CapacitorPlugin(
+    name = "MediaSave",
+    permissions =
+        @Permission(
+            strings = { Manifest.permission.WRITE_EXTERNAL_STORAGE },
+            alias = MediaSavePlugin.STORAGE_ALIAS
+        )
+)
 public class MediaSavePlugin extends Plugin {
 
+    static final String STORAGE_ALIAS = "storage";
+    private static final String[] STORAGE_PERMISSIONS = { Manifest.permission.WRITE_EXTERNAL_STORAGE };
     private static final int CONNECT_TIMEOUT_MS = 15_000;
     private static final int READ_TIMEOUT_MS = 60_000;
     private static final String SUBFOLDER = "Paldrop";
@@ -43,10 +58,42 @@ public class MediaSavePlugin extends Plugin {
         String fileName = call.getString("fileName");
         String mimeType = call.getString("mimeType", "image/jpeg");
         if (url == null || fileName == null) {
-            call.reject("MISSING_ARGS");
+            call.reject("MISSING_ARGS", "MISSING_ARGS");
             return;
         }
 
+        // Android 10+ writes through MediaStore: no permission to prompt for.
+        // Older versions need WRITE_EXTERNAL_STORAGE, so show the system
+        // permission dialog the first time the user taps "Scarica".
+        if (needsLegacyStoragePermission()
+                && !PermissionHelper.hasPermissions(getContext(), STORAGE_PERMISSIONS)) {
+            requestPermissionForAlias(STORAGE_ALIAS, call, "onStoragePermissionResult");
+            return;
+        }
+        runSave(call, url, fileName, mimeType);
+    }
+
+    /** Called by Capacitor after the user answered the permission dialog. */
+    @PluginMethod
+    @PermissionCallback
+    public void onStoragePermissionResult(PluginCall call) {
+        if (!PermissionHelper.hasPermissions(getContext(), STORAGE_PERMISSIONS)) {
+            call.reject("PERMISSION_DENIED", "PERMISSION_DENIED");
+            return;
+        }
+        runSave(call, call.getString("url"), call.getString("fileName"),
+                call.getString("mimeType", "image/jpeg"));
+    }
+
+    private boolean needsLegacyStoragePermission() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q;
+    }
+
+    private void runSave(PluginCall call, String url, String fileName, String mimeType) {
+        if (url == null || fileName == null) {
+            call.reject("MISSING_ARGS", "MISSING_ARGS");
+            return;
+        }
         // Networking + disk I/O off the bridge thread.
         new Thread(() -> {
             try {
@@ -57,6 +104,7 @@ public class MediaSavePlugin extends Plugin {
                 result.put("bytes", bytes.length);
                 call.resolve(result);
             } catch (Exception error) {
+                Logger.error("MediaSave failed", error);
                 call.reject("SAVE_FAILED: " + error.getMessage(), "SAVE_FAILED", error);
             }
         }, "paldrop-save").start();

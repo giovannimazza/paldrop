@@ -122,19 +122,28 @@ export async function downloadFile(
   mimeType: string = "image/jpeg"
 ): Promise<void> {
   if (isNativePlatform()) {
+    let failureCode = "SAVE_FAILED";
     try {
       // 1) Native download straight into MediaStore (gallery / Download).
+      //    On Android 9- this first shows the storage permission prompt.
       await MediaSave.save({ url, fileName, mimeType });
       return;
-    } catch {
-      // 2) Fallback: fetch here and write into the public Documents folder.
-      try {
-        await saveViaFilesystem(url, fileName);
-        return;
-      } catch {
-        // 3) Last resort: the plain anchor flow below.
+    } catch (error) {
+      failureCode = nativeErrorCode(error);
+      // A denied permission is terminal: retrying would only re-prompt.
+      if (failureCode !== "PERMISSION_DENIED") {
+        try {
+          // 2) Fallback: fetch here and write into the public Documents folder.
+          await saveViaFilesystem(url, fileName);
+          return;
+        } catch {
+          // Keep the original code for the error surfaced below.
+        }
       }
     }
+    // Nothing saved: report why, so the UI can show a real message instead
+    // of silently doing nothing (the WebView has no download manager).
+    throw codedDownloadError(failureCode);
   }
   try {
     const response = await fetch(url);
@@ -147,6 +156,22 @@ export async function downloadFile(
     // Fallback: plain link (Convex storage serves with the right headers).
     triggerDownload(url, fileName);
   }
+}
+
+/** Error shaped so errorCodeOf() can read its `data.code`. */
+function codedDownloadError(code: string): Error & { data?: unknown } {
+  const error = new Error(code) as Error & { data?: unknown };
+  error.data = { code };
+  return error;
+}
+
+/** Extracts a coded reason from a Capacitor plugin rejection. */
+function nativeErrorCode(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && /^[A-Z_]+$/.test(code)) return code;
+  const message = String((error as { message?: unknown } | null)?.message ?? "");
+  const match = message.match(/PERMISSION_DENIED|MISSING_ARGS|SAVE_FAILED/);
+  return match ? match[0] : "SAVE_FAILED";
 }
 
 /** True only inside the Capacitor WebView (Android APK). */
