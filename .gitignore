@@ -1,6 +1,9 @@
 node_modules/
 dist/
 .tmp/
+.android-sdk/
+.tools/
+*.apk
 .env
 .env.*
 !.env.example

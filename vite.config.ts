@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // Set BASE_PATH when hosting under a sub-path (e.g. /paldrop/ on GitHub Pages).
+  base: process.env.BASE_PATH ?? "/",
   server: {
     host: true,
     port: 5173,

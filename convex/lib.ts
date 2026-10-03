@@ -126,8 +126,9 @@ export function normalizeOrigin(origin?: string): string | null {
   const candidates = [origin, process.env.PALDROP_ORIGIN];
   for (const candidate of candidates) {
     if (typeof candidate !== "string") continue;
+    // Accepts an origin or an origin + sub-path (e.g. https://host/paldrop/).
     const trimmed = candidate.trim().replace(/\/+$/, "");
-    if (/^https?:\/\/[^\s/?#]{1,180}$/i.test(trimmed)) return trimmed;
+    if (/^https?:\/\/[^\s?#]{1,200}$/i.test(trimmed)) return trimmed;
   }
   return null;
 }

@@ -6,6 +6,8 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { hasKey, useI18n, type TKey } from "../i18n";
 import { StatusBadge } from "../components/Layout";
 import {
+  absoluteSessionUrl,
+  appBaseUrl,
   downloadFile,
   ensureExtension,
   errorCodeOf,
@@ -151,7 +153,7 @@ export function Receive() {
       return;
     }
     let cancelled = false;
-    QRCode.toDataURL(`${window.location.origin}/r/${token}`, {
+    QRCode.toDataURL(absoluteSessionUrl(token), {
       margin: 4,
       width: 720,
       errorCorrectionLevel: "H",
@@ -174,7 +176,7 @@ export function Receive() {
     try {
       const created = await createSession({
         autoAccept: mode === "auto",
-        origin: window.location.origin,
+        origin: appBaseUrl(),
       });
       try {
         localStorage.setItem(TOKEN_KEY, created.token);

@@ -174,6 +174,13 @@ export function formatCountdown(msRemaining: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+/** Absolute URL of the send page, honouring a possible base path (e.g. GitHub Pages). */
 export function absoluteSessionUrl(token: string): string {
-  return `${window.location.origin}/r/${token}`;
+  const base = import.meta.env.BASE_URL.replace(/\/*$/, "/");
+  return `${window.location.origin}${base}r/${token}`;
+}
+
+/** Base URL (origin + base path, trailing slash) used when creating a session. */
+export function appBaseUrl(): string {
+  return `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/*$/, "/")}`;
 }
