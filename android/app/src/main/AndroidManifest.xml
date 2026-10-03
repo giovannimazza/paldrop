@@ -35,6 +35,15 @@
         </provider>
     </application>
 
+    <!-- Android 11+ package visibility: without this the WebView cannot
+         resolve ACTION_IMAGE_CAPTURE and "Scatta foto" silently falls back
+         to the file picker (gallery) instead of the camera. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
