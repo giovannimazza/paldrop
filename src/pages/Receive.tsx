@@ -15,15 +15,20 @@ import {
   createSession,
   deletePhoto,
   extendSession,
+  getLocalHotspot,
   isNativeApp,
   localServerUrl,
+  refreshBackendMode,
   rejectPhoto,
   sessionUrl,
+  startLocalHotspot,
   startLocalServer,
+  stopLocalHotspot,
   stopLocalServer,
   useBackendMode,
   usePhotosInfo,
   useSessionInfo,
+  type HotspotState,
   type PhotoInfo,
 } from "../lib/backend";
 
@@ -32,11 +37,11 @@ const MODE_KEY = "paldrop.receive.mode";
 
 type Mode = "auto" | "manual";
 
-type Photo = PhotoInfo;
-
-type PhotoCardProps = {
+type Photo = PhotoInfo;type PhotoCardProps = {
   photo: Photo;
   lang: "it" | "en";
+  saving?: boolean;
+  saved?: boolean;
   onDownload?: () => void;
   onDelete: () => void;
   onAccept?: () => void;
@@ -47,12 +52,16 @@ type PhotoCardProps = {
     accept: string;
     reject: string;
     pending: string;
+    saving: string;
+    savedBadge: string;
   };
 };
 
 function PhotoCard({
   photo,
   lang,
+  saving = false,
+  saved = false,
   onDownload,
   onDelete,
   onAccept,
@@ -66,6 +75,16 @@ function PhotoCard({
         <img src={photo.url} alt={photo.fileName} loading="lazy" />
         {photo.status === "pending" && (
           <span className="photo-chip">{labels.pending}</span>
+        )}
+        {saving && (
+          <span className="photo-saving" role="status" aria-label={labels.saving}>
+            <span className="spinner" aria-hidden="true" />
+          </span>
+        )}
+        {saved && !saving && (
+          <span className="photo-saved-check" role="img" aria-label={labels.savedBadge}>
+            ✓
+          </span>
         )}
       </div>
       <figcaption className="photo-meta">
@@ -84,7 +103,13 @@ function PhotoCard({
               {labels.reject}
             </button>
           </>
-        ) : (            <button type="button" className="btn btn-small btn-primary" onClick={onDownload} disabled={!onDownload}>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-small btn-primary"
+            onClick={onDownload}
+            disabled={!onDownload || saving}
+          >
             {labels.download}
           </button>
         )}
@@ -94,6 +119,39 @@ function PhotoCard({
       </div>
     </figure>
   );
+}
+
+/** Renders a payload as a QR data URL (null payload clears the image). */
+function useQrDataUrl(payload: string | null, width: number): string | null {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!payload) {
+      setDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(payload, {
+      margin: 2,
+      width,
+      errorCorrectionLevel: "M",
+      color: { dark: "#0b1220", light: "#ffffff" },
+    })
+      .then((url) => {
+        if (!cancelled) setDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setDataUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [payload, width]);
+  return dataUrl;
+}
+
+/** Escapes a string for the WIFI: QR payload format. */
+function escapeWifi(value: string): string {
+  return value.replace(/([\\;,:"])/g, "\\$1");
 }
 
 export function Receive() {
@@ -124,6 +182,11 @@ export function Receive() {
   const [serverError, setServerError] = useState(false);
   const [downloadNote, setDownloadNote] = useState<string | null>(null);
   const errorBannerRef = useRef<HTMLDivElement>(null);
+  const [hotspot, setHotspot] = useState<HotspotState | null>(null);
+  const [hotspotBusy, setHotspotBusy] = useState(false);
+  const [hotspotError, setHotspotError] = useState<string | null>(null);
+  const [savingIds, setSavingIds] = useState<Record<string, boolean>>({});
+  const [savedIds, setSavedIds] = useState<Record<string, boolean>>({});
 
   const backend = useBackendMode();
   const session = useSessionInfo(backend, token);
@@ -174,6 +237,29 @@ export function Receive() {
     };
   }, [token, backend]);
 
+  // A new session resets the per-photo save state.
+  useEffect(() => {
+    setSavingIds({});
+    setSavedIds({});
+  }, [token]);
+
+  // On Android, reflect a hotspot that is already running (it survives
+  // WebView reloads) and adopt its URL as the local backend address.
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    let live = true;
+    void getLocalHotspot().then((info) => {
+      if (!live) return;
+      if (info) {
+        setHotspot(info);
+        void refreshBackendMode();
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   const handleCreate = useCallback(async () => {
     setCreating(true);
     setErrorCode(null);
@@ -222,32 +308,44 @@ export function Receive() {
     }
   }, [backend, extendSession, token]);
 
-  const handleDownload = useCallback(async (photo: Photo) => {
-    if (!photo.url) return;
-    setErrorCode(null);
-    setDownloadNote(null);
-    try {
-      const outcome = await downloadFile(
-        photo.url,
-        ensureExtension(photo.fileName, photo.mimeType),
-        photo.mimeType
-      );
-      if (outcome !== "web") {
-        // Native save confirmed: tell the user where the photo went.
-        setDownloadNote(t("photo.saved"));
-        window.setTimeout(() => setDownloadNote(null), 5000);
+  const handleDownload = useCallback(
+    async (photo: Photo) => {
+      if (!photo.url || savingIds[photo.id]) return;
+      setErrorCode(null);
+      setDownloadNote(null);
+      setSavingIds((prev) => ({ ...prev, [photo.id]: true }));
+      try {
+        const outcome = await downloadFile(
+          photo.url,
+          ensureExtension(photo.fileName, photo.mimeType),
+          photo.mimeType
+        );
+        // Loader becomes the green check in the photo's top-right corner.
+        setSavedIds((prev) => ({ ...prev, [photo.id]: true }));
+        if (outcome !== "web") {
+          // Native save confirmed: tell the user where the photo went.
+          setDownloadNote(t("photo.saved"));
+          window.setTimeout(() => setDownloadNote(null), 5000);
+        }
+      } catch (error) {
+        // Surface why nothing was saved (denied permission, timeout, ...).
+        const code = errorCodeOf(error);
+        setErrorCode(code);
+        // The banner sits above the photo grid: bring it into view so the
+        // reason is never scrolled off-screen when the user taps "Scarica".
+        window.requestAnimationFrame(() =>
+          errorBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+        );
+      } finally {
+        setSavingIds((prev) => {
+          const next = { ...prev };
+          delete next[photo.id];
+          return next;
+        });
       }
-    } catch (error) {
-      // Surface why nothing was saved (denied permission, timeout, ...).
-      const code = errorCodeOf(error);
-      setErrorCode(code);
-      // The banner sits above the photo grid: bring it into view so the
-      // reason is never scrolled off-screen when the user taps "Scarica".
-      window.requestAnimationFrame(() =>
-        errorBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-      );
-    }
-  }, [t]);
+    },
+    [savingIds, t]
+  );
 
   const handleStartServer = useCallback(async () => {
     setServerBusy(true);
@@ -300,6 +398,38 @@ export function Receive() {
     setConfirmClose(false);
   }, []);
 
+  const handleStartHotspot = useCallback(async () => {
+    setHotspotBusy(true);
+    setHotspotError(null);
+    try {
+      if (backend?.kind !== "local") await startLocalServer();
+      const info = await startLocalHotspot();
+      setHotspot(info);
+      // The phone's IP changes with the hotspot: re-read the server URL so
+      // the session QR points at an address the sender can actually reach.
+      await refreshBackendMode();
+    } catch (error) {
+      const code = errorCodeOf(error);
+      setHotspotError(code);
+    } finally {
+      setHotspotBusy(false);
+    }
+  }, [backend]);
+
+  const handleStopHotspot = useCallback(async () => {
+    setHotspotBusy(true);
+    setHotspotError(null);
+    try {
+      await stopLocalHotspot();
+      setHotspot(null);
+      await refreshBackendMode();
+    } catch {
+      setHotspotError("HOTSPOT_FAILED");
+    } finally {
+      setHotspotBusy(false);
+    }
+  }, []);
+
   const runPhotoAction = useCallback(
     async (action: (photoId: string) => Promise<void>, photoId: string) => {
       setErrorCode(null);
@@ -337,7 +467,32 @@ export function Receive() {
     accept: t("photo.accept"),
     reject: t("photo.reject"),
     pending: t("photo.pending"),
+    saving: t("photo.saving"),
+    savedBadge: t("photo.savedBadge"),
   };
+
+  // QR codes for the hotspot flow: first join the phone's Wi-Fi network,
+  // then open Paldrop through the local server.
+  const hotspotWifiPayload = hotspot
+    ? `WIFI:T:WPA;S:${escapeWifi(hotspot.ssid)};P:${escapeWifi(hotspot.passphrase)};;`
+    : null;
+  const hotspotAppPayload = hotspot
+    ? backend?.kind === "local"
+      ? token
+        ? sessionUrl(backend, token)
+        : localServerUrl(backend)
+      : null
+    : null;
+  const hotspotWifiQr = useQrDataUrl(hotspotWifiPayload, 320);
+  const hotspotAppQr = useQrDataUrl(hotspotAppPayload, 320);
+
+  const hotspotErrorLabel = hotspotError
+    ? hotspotError === "HOTSPOT_UNSUPPORTED"
+      ? t("server.hotspotUnsupported")
+      : hotspotError === "PERMISSION_DENIED"
+        ? t("server.hotspotPermission")
+        : t("server.hotspotFailed")
+    : null;
 
   return (
     <section className="page receive-page">
@@ -391,6 +546,59 @@ export function Receive() {
               </button>
             </>
           )}
+
+          <div className="hotspot-block">
+            <p className="panel-title">{t("server.hotspotTitle")}</p>
+            <p className="hint-text small">{t("server.hotspotHint")}</p>
+            {hotspotErrorLabel && (
+              <div className="banner banner-warn" role="alert">
+                {hotspotErrorLabel}
+              </div>
+            )}
+            {hotspot ? (
+              <>
+                <div className="hotspot-meta">
+                  <span className="meta-chip">
+                    {t("server.hotspotNetwork")} <strong>{hotspot.ssid}</strong>
+                  </span>
+                  <span className="meta-chip">
+                    {t("server.hotspotPassword")} <strong>{hotspot.passphrase}</strong>
+                  </span>
+                </div>
+                <div className="hotspot-qrs">
+                  {hotspotWifiQr && (
+                    <figure className="hotspot-qr">
+                      <img src={hotspotWifiQr} alt={t("server.hotspotStep1")} />
+                      <figcaption>{t("server.hotspotStep1")}</figcaption>
+                    </figure>
+                  )}
+                  {hotspotAppQr && (
+                    <figure className="hotspot-qr">
+                      <img src={hotspotAppQr} alt={t("server.hotspotStep2")} />
+                      <figcaption>{t("server.hotspotStep2")}</figcaption>
+                    </figure>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-block"
+                  onClick={handleStopHotspot}
+                  disabled={hotspotBusy}
+                >
+                  {hotspotBusy ? t("common.loading") : t("server.hotspotStop")}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-secondary btn-block"
+                onClick={handleStartHotspot}
+                disabled={hotspotBusy || !backend}
+              >
+                {hotspotBusy ? t("common.loading") : t("server.hotspotStart")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -536,6 +744,8 @@ export function Receive() {
                         photo={photo}
                         lang={lang}
                         labels={labels}
+                        saving={!!savingIds[photo.id]}
+                        saved={!!savedIds[photo.id]}
                         onDownload={() => handleDownload(photo)}
                         onDelete={() =>
                           runPhotoAction((photoId) => deletePhoto(backend, token, photoId), photo.id)

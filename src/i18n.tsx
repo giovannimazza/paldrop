@@ -66,6 +66,19 @@ const it = {
     "Il QR punta al server locale: l’altro telefono aprirà Paldrop da questa rete.",
   "server.localChip": "Rete locale",
   "server.startFailed": "Impossibile avviare il server locale. Riprova.",
+  "server.hotspotTitle": "Hotspot locale (senza Wi-Fi)",
+  "server.hotspotHint":
+    "Crea una rete solo tra i due telefoni: unisciti con il primo QR, poi apri Paldrop con il secondo.",
+  "server.hotspotStart": "Avvia hotspot locale",
+  "server.hotspotStop": "Ferma hotspot",
+  "server.hotspotStep1": "1 · Unisciti alla rete Wi-Fi",
+  "server.hotspotStep2": "2 · Apri Paldrop",
+  "server.hotspotNetwork": "Rete:",
+  "server.hotspotPassword": "Password:",
+  "server.hotspotUnsupported":
+    "Hotspot non supportato su questo telefono: usa l’hotspot portatile dalle Impostazioni.",
+  "server.hotspotPermission": "Permesso negato: l’hotspot richiede l’accesso ai dispositivi Wi-Fi.",
+  "server.hotspotFailed": "Impossibile avviare l’hotspot locale. Riprova.",
 
   "status.active": "Attiva",
   "status.waiting": "In attesa",
@@ -79,6 +92,8 @@ const it = {
   "photo.reject": "Rifiuta",
   "photo.pending": "In approvazione",
   "photo.saved": "Foto salvata sul telefono (album Paldrop)",
+  "photo.saving": "Salvataggio in corso…",
+  "photo.savedBadge": "Salvata",
 
   "send.title": "Invia foto a questo telefono",
   "send.subtitle": "Nessun dato personale, nessun account.",
@@ -216,6 +231,19 @@ const en: Record<TKey, string> = {
     "The QR points at the local server: the other phone opens Paldrop from this network.",
   "server.localChip": "Local network",
   "server.startFailed": "Could not start the local server. Try again.",
+  "server.hotspotTitle": "Local hotspot (no Wi-Fi)",
+  "server.hotspotHint":
+    "Create a network just for the two phones: join it with the first QR, then open Paldrop with the second.",
+  "server.hotspotStart": "Start local hotspot",
+  "server.hotspotStop": "Stop hotspot",
+  "server.hotspotStep1": "1 · Join the Wi-Fi network",
+  "server.hotspotStep2": "2 · Open Paldrop",
+  "server.hotspotNetwork": "Network:",
+  "server.hotspotPassword": "Password:",
+  "server.hotspotUnsupported":
+    "Hotspot not supported on this phone: use the portable hotspot from Settings.",
+  "server.hotspotPermission": "Permission denied: the hotspot needs nearby Wi-Fi access.",
+  "server.hotspotFailed": "Could not start the local hotspot. Try again.",
 
   "status.active": "Active",
   "status.waiting": "Waiting",
@@ -229,6 +257,8 @@ const en: Record<TKey, string> = {
   "photo.reject": "Reject",
   "photo.pending": "Awaiting approval",
   "photo.saved": "Photo saved to this phone (Paldrop album)",
+  "photo.saving": "Saving…",
+  "photo.savedBadge": "Saved",
 
   "send.title": "Send photos to this phone",
   "send.subtitle": "No personal data, no account.",

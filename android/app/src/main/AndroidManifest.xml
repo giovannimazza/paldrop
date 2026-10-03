@@ -48,6 +48,16 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Local-only hotspot: NEARBY_WIFI_DEVICES on Android 13+, the location
+         permission on older versions (see the Android hotspot docs). -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <!-- Only needed on Android 9 and lower to write the public Pictures/Download
          folders; Android 10+ uses MediaStore and needs no permission. -->
     <uses-permission

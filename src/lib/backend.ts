@@ -58,11 +58,17 @@ export type PhotosInfo = {
 };
 
 type LocalServerInfo = { running: boolean; url?: string; ip?: string; port?: number };
+type HotspotInfo = { running: boolean; ssid?: string; passphrase?: string };
+
+export type HotspotState = { ssid: string; passphrase: string };
 
 type LocalServerPluginType = {
   start(): Promise<LocalServerInfo>;
   stop(): Promise<{ running: boolean }>;
   status(): Promise<LocalServerInfo>;
+  startHotspot(): Promise<HotspotInfo>;
+  stopHotspot(): Promise<{ running: boolean }>;
+  hotspotStatus(): Promise<HotspotInfo>;
 };
 
 const LocalServer = registerPlugin<LocalServerPluginType>("PaldropLocal");
@@ -157,6 +163,78 @@ export async function startLocalServer(): Promise<BackendMode> {
 /** Stops the native offline server and re-detects the backend. */
 export async function stopLocalServer(): Promise<BackendMode> {
   await LocalServer.stop();
+  return applyMode(await detect());
+}
+
+// --- local-only hotspot -----------------------------------------------------
+
+function pluginErrorCode(error: unknown, fallback: string): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && /^[A-Z_]+$/.test(code)) return code;
+  const message = String((error as { message?: unknown } | null)?.message ?? "");
+  const match = message.match(
+    /HOTSPOT_UNSUPPORTED|HOTSPOT_FAILED|HOTSPOT_BUSY|PERMISSION_DENIED|SERVER_START_FAILED/
+  );
+  return match ? match[0] : fallback;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(codedError("HOTSPOT_FAILED")), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+/**
+ * Starts the Android local-only hotspot so the two phones get their own
+ * network without a router; rejects with a coded error the UI can show.
+ */
+export async function startLocalHotspot(): Promise<HotspotState> {
+  try {
+    // Generous: the system permission dialog may be waiting for the user.
+    const info = await withTimeout(LocalServer.startHotspot(), 120_000);
+    if (!info.running || !info.ssid) throw codedError("HOTSPOT_FAILED");
+    return { ssid: info.ssid, passphrase: info.passphrase ?? "" };
+  } catch (error) {
+    throw codedError(pluginErrorCode(error, "HOTSPOT_FAILED"));
+  }
+}
+
+export async function stopLocalHotspot(): Promise<void> {
+  try {
+    await LocalServer.stopHotspot();
+  } catch {
+    // Already stopped.
+  }
+}
+
+/** Returns the hotspot credentials when it is already running. */
+export async function getLocalHotspot(): Promise<HotspotState | null> {
+  try {
+    const info = await LocalServer.hotspotStatus();
+    if (info.running && info.ssid) {
+      return { ssid: info.ssid, passphrase: info.passphrase ?? "" };
+    }
+  } catch {
+    // Not native / plugin unavailable.
+  }
+  return null;
+}
+
+/**
+ * Re-detects the backend: the advertised server URL changes when the
+ * hotspot (and with it the phone's IP address) comes up or goes down.
+ */
+export async function refreshBackendMode(): Promise<BackendMode> {
   return applyMode(await detect());
 }
 
