@@ -30,6 +30,8 @@ jobs:
           # Sub-path where this repo is published (username.github.io/paldrop/)
           BASE_PATH: /paldrop/
           # Public backend URL, committed in .env.production (no secrets here)
+      - name: SPA fallback (so /r/<token> loads the app)
+        run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

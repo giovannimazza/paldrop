@@ -181,13 +181,22 @@ export function formatCountdown(msRemaining: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-/** Absolute URL of the send page, honouring a possible base path (e.g. GitHub Pages). */
-export function absoluteSessionUrl(token: string): string {
-  const base = import.meta.env.BASE_URL.replace(/\/*$/, "/");
-  return `${window.location.origin}${base}r/${token}`;
+/**
+ * Canonical absolute base URL of the hosted app, always ending with "/".
+ *
+ * Inside the Capacitor APK the WebView loads bundled assets from
+ * https://localhost, so window.location.origin would put "localhost" in the
+ * QR code. VITE_PUBLIC_APP_URL (baked in by scripts/build-apk.mjs) points at
+ * the real hosted site; plain web builds fall back to the current origin plus
+ * the base path.
+ */
+export function publicAppBaseUrl(): string {
+  const configured = import.meta.env.VITE_PUBLIC_APP_URL?.trim();
+  if (configured) return `${configured.replace(/\/+$/, "")}/`;
+  return `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/*$/, "/")}`;
 }
 
-/** Base URL (origin + base path, trailing slash) used when creating a session. */
-export function appBaseUrl(): string {
-  return `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/*$/, "/")}`;
+/** Absolute URL of the send page, honouring a possible base path (e.g. GitHub Pages). */
+export function absoluteSessionUrl(token: string): string {
+  return `${publicAppBaseUrl()}r/${token}`;
 }

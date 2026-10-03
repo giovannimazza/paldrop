@@ -7,12 +7,12 @@ import { hasKey, useI18n, type TKey } from "../i18n";
 import { StatusBadge } from "../components/Layout";
 import {
   absoluteSessionUrl,
-  appBaseUrl,
   downloadFile,
   ensureExtension,
   errorCodeOf,
   formatBytes,
   formatCountdown,
+  publicAppBaseUrl,
 } from "../lib/client";
 
 const TOKEN_KEY = "paldrop.receive.token";
@@ -176,7 +176,7 @@ export function Receive() {
     try {
       const created = await createSession({
         autoAccept: mode === "auto",
-        origin: appBaseUrl(),
+        origin: publicAppBaseUrl(),
       });
       try {
         localStorage.setItem(TOKEN_KEY, created.token);
