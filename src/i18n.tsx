@@ -78,6 +78,7 @@ const it = {
   "photo.accept": "Accetta",
   "photo.reject": "Rifiuta",
   "photo.pending": "In approvazione",
+  "photo.saved": "Foto salvata sul telefono (album Paldrop)",
 
   "send.title": "Invia foto a questo telefono",
   "send.subtitle": "Nessun dato personale, nessun account.",
@@ -113,6 +114,7 @@ const it = {
   "errors.PERMISSION_DENIED":
     "Permesso di archiviazione negato: consenti l’accesso alle foto nelle impostazioni del telefono per salvare le immagini.",
   "errors.SAVE_FAILED": "Salvataggio non riuscito. Controlla lo spazio disponibile e riprova.",
+  "errors.SAVE_TIMEOUT": "Salvataggio troppo lento: controlla la connessione e riprova.",
   "errors.UNKNOWN": "Qualcosa è andato storto. Riprova.",
 
   "common.loading": "Caricamento…",
@@ -226,6 +228,7 @@ const en: Record<TKey, string> = {
   "photo.accept": "Accept",
   "photo.reject": "Reject",
   "photo.pending": "Awaiting approval",
+  "photo.saved": "Photo saved to this phone (Paldrop album)",
 
   "send.title": "Send photos to this phone",
   "send.subtitle": "No personal data, no account.",
@@ -261,6 +264,7 @@ const en: Record<TKey, string> = {
   "errors.PERMISSION_DENIED":
     "Storage permission denied: allow photo access in the phone settings to save images.",
   "errors.SAVE_FAILED": "Could not save the photo. Check free space and try again.",
+  "errors.SAVE_TIMEOUT": "Saving took too long: check the connection and try again.",
   "errors.UNKNOWN": "Something went wrong. Try again.",
 
   "common.loading": "Loading…",

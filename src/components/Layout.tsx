@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { hasKey, useI18n, type TKey } from "../i18n";
+import { APP_BUILD } from "../lib/client";
 import { Logo } from "./Logo";
 
 type Status = "active" | "waiting" | "expired" | "closed";
@@ -86,6 +87,10 @@ export function Layout({ children }: { children: ReactNode }) {
           ·
         </span>
         <Link to="/terms">{t("nav.terms")}</Link>
+        <span className="footer-sep" aria-hidden="true">
+          ·
+        </span>
+        <span className="footer-build" title="build">{APP_BUILD}</span>
       </footer>
     </div>
   );

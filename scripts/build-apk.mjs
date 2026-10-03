@@ -24,6 +24,12 @@ function findJdk21() {
 const env = {
   ...process.env,
   VITE_PUBLIC_APP_URL: PUBLIC_URL,
+  // Shown in the app footer so an installed APK can be recognised at a glance.
+  VITE_BUILD_STAMP: (() => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  })(),
   ANDROID_HOME: process.env.ANDROID_HOME ?? resolve(".android-sdk"),
 };
 const javaHome = findJdk21();

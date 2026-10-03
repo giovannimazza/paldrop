@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { hasKey, useI18n, type TKey } from "../i18n";
 import { StatusBadge } from "../components/Layout";
@@ -122,6 +122,8 @@ export function Receive() {
   const [extendedNote, setExtendedNote] = useState(false);
   const [serverBusy, setServerBusy] = useState(false);
   const [serverError, setServerError] = useState(false);
+  const [downloadNote, setDownloadNote] = useState<string | null>(null);
+  const errorBannerRef = useRef<HTMLDivElement>(null);
 
   const backend = useBackendMode();
   const session = useSessionInfo(backend, token);
@@ -223,17 +225,29 @@ export function Receive() {
   const handleDownload = useCallback(async (photo: Photo) => {
     if (!photo.url) return;
     setErrorCode(null);
+    setDownloadNote(null);
     try {
-      await downloadFile(
+      const outcome = await downloadFile(
         photo.url,
         ensureExtension(photo.fileName, photo.mimeType),
         photo.mimeType
       );
+      if (outcome !== "web") {
+        // Native save confirmed: tell the user where the photo went.
+        setDownloadNote(t("photo.saved"));
+        window.setTimeout(() => setDownloadNote(null), 5000);
+      }
     } catch (error) {
-      // Surface why nothing was saved (denied permission, no space, ...).
-      setErrorCode(errorCodeOf(error));
+      // Surface why nothing was saved (denied permission, timeout, ...).
+      const code = errorCodeOf(error);
+      setErrorCode(code);
+      // The banner sits above the photo grid: bring it into view so the
+      // reason is never scrolled off-screen when the user taps "Scarica".
+      window.requestAnimationFrame(() =>
+        errorBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      );
     }
-  }, []);
+  }, [t]);
 
   const handleStartServer = useCallback(async () => {
     setServerBusy(true);
@@ -333,7 +347,7 @@ export function Receive() {
       </div>
 
       {errorCode && (
-        <div className="banner banner-error" role="alert">
+        <div className="banner banner-error" role="alert" ref={errorBannerRef}>
           {hasKey(`errors.${errorCode}`)
             ? t(`errors.${errorCode}` as TKey)
             : t("errors.UNKNOWN")}
@@ -574,6 +588,12 @@ export function Receive() {
             </button>
           )}
         </>
+      )}
+
+      {downloadNote && (
+        <div className="toast toast-success" role="status">
+          {downloadNote}
+        </div>
       )}
     </section>
   );

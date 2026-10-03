@@ -224,6 +224,36 @@ a {
   text-align: center;
 }
 
+/* Floating confirmation shown after a successful native save. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: min(92vw, 480px);
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 650;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.toast-success {
+  background: color-mix(in srgb, var(--ok, #16a34a) 22%, var(--surface));
+  border-color: color-mix(in srgb, var(--ok, #16a34a) 55%, transparent);
+}
+
+.footer-build {
+  color: var(--muted);
+  font-size: 12px;
+  opacity: 0.75;
+}
+
 /* ---------- Buttons ---------- */
 .btn {
   display: inline-flex;

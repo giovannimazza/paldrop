@@ -110,32 +110,40 @@ export function readImageDimensions(
   });
 }
 
+/** Where a save ended up, so the UI can confirm it to the user. */
+export type DownloadOutcome = "native" | "native-fallback" | "web";
+
 /**
  * Saves a photo so the user can actually find it afterwards.
  * In the APK the WebView has no download manager and ignores the `download`
  * attribute for cross-origin URLs, so native code does the work; on the web
  * a blob keeps the file in the browser's downloads.
+ *
+ * Resolves with where the save happened and rejects with a coded error
+ * (`data.code`) when nothing could be saved, so the caller can always show
+ * an outcome instead of doing nothing.
  */
 export async function downloadFile(
   url: string,
   fileName: string,
   mimeType: string = "image/jpeg"
-): Promise<void> {
+): Promise<DownloadOutcome> {
   if (isNativePlatform()) {
     let failureCode = "SAVE_FAILED";
     try {
       // 1) Native download straight into MediaStore (gallery / Download).
       //    On Android 9- this first shows the storage permission prompt.
-      await MediaSave.save({ url, fileName, mimeType });
-      return;
+      //    A stuck native call must not hang the button forever.
+      await withTimeout(MediaSave.save({ url, fileName, mimeType }), 45_000);
+      return "native";
     } catch (error) {
       failureCode = nativeErrorCode(error);
       // A denied permission is terminal: retrying would only re-prompt.
       if (failureCode !== "PERMISSION_DENIED") {
         try {
           // 2) Fallback: fetch here and write into the public Documents folder.
-          await saveViaFilesystem(url, fileName);
-          return;
+          await withTimeout(saveViaFilesystem(url, fileName), 45_000);
+          return "native-fallback";
         } catch {
           // Keep the original code for the error surfaced below.
         }
@@ -152,10 +160,28 @@ export async function downloadFile(
     const objectUrl = URL.createObjectURL(blob);
     triggerDownload(objectUrl, fileName);
     setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+    return "web";
   } catch {
     // Fallback: plain link (Convex storage serves with the right headers).
     triggerDownload(url, fileName);
+    return "web";
   }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(codedDownloadError("SAVE_TIMEOUT")), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }
 
 /** Error shaped so errorCodeOf() can read its `data.code`. */
@@ -170,9 +196,12 @@ function nativeErrorCode(error: unknown): string {
   const code = (error as { code?: unknown } | null)?.code;
   if (typeof code === "string" && /^[A-Z_]+$/.test(code)) return code;
   const message = String((error as { message?: unknown } | null)?.message ?? "");
-  const match = message.match(/PERMISSION_DENIED|MISSING_ARGS|SAVE_FAILED/);
+  const match = message.match(/PERMISSION_DENIED|MISSING_ARGS|SAVE_TIMEOUT|SAVE_FAILED/);
   return match ? match[0] : "SAVE_FAILED";
 }
+
+/** Build stamp baked in by scripts/build-apk.mjs ("dev" for plain builds). */
+export const APP_BUILD = import.meta.env.VITE_BUILD_STAMP ?? "dev";
 
 /** True only inside the Capacitor WebView (Android APK). */
 function isNativePlatform(): boolean {
