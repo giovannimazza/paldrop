@@ -96,14 +96,15 @@ node scripts/upload-photo.mjs <token> scripts/test-photo.png
 Backend (production):
 
 ```bash
-npx convex deployment token create paldrop-prod --deployment prod --save-env .env.production
-npx convex deploy --env-file .env.production
+npx convex deployment token create paldrop-prod --deployment prod --save-env .env.production.local
+npx convex deploy --env-file .env.production.local
 ```
 
-`.env.production` also carries `VITE_CONVEX_URL`, so `npm run build` bakes the
-production backend URL into the client (deploy keys are never bundled: only
-`VITE_*` variables reach the browser). Current production backend:
-`https://spotted-manatee-851.convex.cloud`.
+`.env.production` (committed) holds only the public `VITE_CONVEX_URL`, so
+`npm run build` bakes the production backend URL into the client, while the
+deploy key stays in the git-ignored `.env.production.local` (deploy keys are
+never bundled: only `VITE_*` variables reach the browser). Current production
+backend: `https://spotted-manatee-851.convex.cloud`.
 
 Frontend: `.github/workflows/pages.yml` builds and publishes `dist/` to GitHub
 Pages on every push to `main` (enable **Settings → Pages → Source: GitHub

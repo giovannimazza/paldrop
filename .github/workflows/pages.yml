@@ -27,9 +27,9 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          # Sub-path where this repo is published (username.github.io/paldrop/)
           BASE_PATH: /paldrop/
-          # Set it in Settings → Secrets and variables → Actions → Variables
-          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
+          # Public backend URL, committed in .env.production (no secrets here)
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

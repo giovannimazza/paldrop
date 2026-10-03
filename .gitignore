@@ -7,6 +7,9 @@ dist/
 .env
 .env.*
 !.env.example
+# Only VITE_CONVEX_URL lives here (it ships in the public bundle anyway);
+# secrets belong in .env.production.local, which stays ignored.
+!.env.production
 *.local
 .DS_Store
 logs/
