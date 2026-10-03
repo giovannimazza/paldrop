@@ -1,101 +1,119 @@
 # Paldrop
 
-Trasferimento foto da un telefono all'altro tramite QR code.
-Nessun numero, nessun account, nessun contatto.
+Transfer photos from one phone to another with a QR code.
+No number, no account, no contact.
 
-Stack: **React + Vite + TypeScript** lato client, **Convex** per database,
-sessioni, file storage e realtime.
+Stack: **React + Vite + TypeScript** on the client, **Convex** for the
+database, sessions, file storage and realtime updates.
 
-## Flusso
+## No APK: Paldrop is a web app
 
-1. **Telefono destinazione** → `/receive` → “Genera QR code”.
-   Viene creata una sessione temporanea con token casuale di 32 caratteri
-   (160 bit di entropia, alfabeto base32 leggibile) e scadenza a 15 minuti.
-   Il QR punta a `https://<dominio>/r/<token>`; sotto il QR viene mostrato il
-   codice testuale per l'inserimento manuale.
-2. **Telefono mittente** scansiona il QR (oppure incolla il codice su
-   “Invia foto” nella home) e apre `/r/:token`: seleziona o scatta foto,
-   le anteprima e le invia con barra di avanzamento.
-3. Le foto arrivano **in tempo reale** sulla pagina di ricezione:
-   in “Accettazione automatica” compaiono subito, in “Approvazione manuale”
-   finiscono in “Da approvare” con i pulsanti Accetta / Rifiuta.
-4. Il destinazione può **Scaricare** (download nella galleria) ed **Eliminare**
-   ogni foto, e può **Chiudi sessione**: tutti i file vengono cancellati dallo
-   storage in quel momento.
+Paldrop runs in the browser, so there is nothing to install and no `.apk`
+is produced — the "app" is the URL you open on both phones. On the receiving
+phone you can add it to the home screen (Safari → *Add to Home Screen*); it
+opens full-screen on iOS thanks to the `apple-mobile-web-app-capable` meta
+tag. A real APK would require wrapping the app with Capacitor or a Trusted
+Web Activity, which is a separate build step.
 
-## Limiti e sicurezza
+## Flow
 
-- Sessione: 15 minuti, max **20 foto** e **100 MB** totali (25 MB per file).
-- Tipi ammessi: `image/jpeg`, `image/png`, `image/webp`, `image/heic`.
-- Validazione lato server su ogni azione: controllo token, stato ed expiring
-  della sessione, controlli atomici su conteggio e byte totali.
-- I byte vengono **ispezionati** (magic bytes) nell'azione di upload: un file
-  non immagine o con MIME dichiarato falso viene rifiutato anche se supera i
-  controlli dichiarati.
-- I token non sono enumerabili, non esiste nessuna funzione che elenchi le
-  sessioni, e le foto sono raggiungibili solo dal token della sessione.
-- `cleanupExpiredSessions` viene eseguito **ogni minuto** da un cron Convex:
-  elimina sessioni scadute, foto e file dallo storage, poi ripulisce i record.
+1. **Receiving phone** → `/receive` → “Generate QR code”.
+   A temporary session is created with a random 32-character token
+   (160 bits of entropy, readable base32 alphabet) and a 15-minute expiry.
+   The QR points to `https://<domain>/r/<token>`; the same code is shown as
+   text underneath for manual entry.
+2. **Sending phone** scans the QR (or pastes the code on “Send photos” on the
+   home page) and opens `/r/:token`: it selects or captures photos, previews
+   them and uploads them with a progress bar.
+3. Photos show up **in real time** on the receiving page: with *Automatic
+   acceptance* they appear immediately, with *Manual approval* they land in
+   “To approve” with Accept / Reject buttons.
+4. The receiver can **Download** (saved to the gallery) and **Delete** every
+   photo, and can **Close session**: all files are removed from storage at
+   that moment.
 
-## Struttura
+## Limits and security
+
+- Session: 15 minutes, max **20 photos** and **100 MB** in total (25 MB per file).
+- Allowed types: `image/jpeg`, `image/png`, `image/webp`, `image/heic`.
+- Server-side validation on every action: token, session state and expiry are
+  checked, and the photo count / byte totals are enforced atomically.
+- The bytes are **inspected** (magic numbers) inside the upload action: a
+  non-image file or a forged MIME type is rejected even if the declared
+  metadata looks fine.
+- Tokens cannot be enumerated, no function ever lists sessions, and photos
+  are only reachable with the session token.
+- `cleanupExpiredSessions` runs **every minute** from a Convex cron job: it
+  deletes expired sessions, their photos and the storage blobs, then purges
+  the leftover records.
+
+## Structure
 
 ```
 convex/
-  schema.ts     # tabelle sessions e photos (con indici)
-  lib.ts        # costanti, token, validazione, sniffing, cleanup helper
+  schema.ts     # sessions and photos tables (with indexes)
+  lib.ts        # constants, tokens, validation, sniffing, cleanup helpers
   sessions.ts   # createSession, getSessionByToken, closeSession, cleanup
   photos.ts     # generateUploadUrl, uploadPhoto, listPhotos, accept/reject/delete
-  crons.ts      # cleanup ogni minuto
+  crons.ts      # cleanup every minute
 src/
   pages/        # Home, Receive, Send, Expired, Privacy, Terms
   components/   # Layout, Logo, ErrorBoundary
-  i18n.tsx      # dizionario IT/EN con rilevamento lingua browser
-  lib/client.ts # codici, upload con progresso, download, formattazione
+  i18n.tsx      # IT/EN dictionary with browser-language detection
+  lib/client.ts # codes, upload with progress, download, formatting
 scripts/
-  smoke.mjs           # suite di verifica lato server (28 controlli)
-  upload-photo.mjs    # simula il telefono mittente
-  make-test-image.mjs # genera un PNG di prova
+  smoke.mjs           # server-side verification suite (28 checks)
+  upload-photo.mjs    # simulates the sending phone
+  make-test-image.mjs # generates a test PNG
 ```
 
-## Sviluppo locale
+## Local development
 
 ```bash
 npm install
-npx convex dev      # deployment locale, senza account: scrive .env.local
+npx convex dev      # local deployment, no account required: writes .env.local
 npm run dev         # http://localhost:5173
 ```
 
-`npx convex dev` scarica il backend locale e salva `VITE_CONVEX_URL` in
-`.env.local`; se manca, la app mostra una pagina di configurazione.
+`npx convex dev` downloads the local backend and stores `VITE_CONVEX_URL` in
+`.env.local`; if it is missing, the app shows a setup page.
 
-## Verifica
+> The local backend only listens on `127.0.0.1:3210`, so two physical phones
+> need a deployed backend (see below) or a tunnel.
+
+## Verification
 
 ```bash
-npm run typecheck                       # tsc su src + convex
-npm run build                           # typecheck + bundle di produzione
-node scripts/make-test-image.mjs        # PNG di prova
-node scripts/smoke.mjs                  #28 controlli server-side
+npm run typecheck                       # tsc over src + convex
+npm run build                           # typecheck + production bundle
+node scripts/make-test-image.mjs        # test PNG
+node scripts/smoke.mjs                  # 28 server-side checks
 node scripts/upload-photo.mjs <token> scripts/test-photo.png
 ```
 
 ## Deploy
 
-Il progetto è deployabile direttamente da Freebuff (frontend + Convex):
-`npx convex deploy` pubblica schema, funzioni e cron, mentre il frontend usa
-`VITE_CONVEX_URL`. In alternativa:
+The app deploys from Freebuff (frontend + Convex): `npx convex deploy`
+publishes the schema, functions and cron, while the frontend reads
+`VITE_CONVEX_URL`. Alternatively:
 
 ```bash
-npx convex deploy          # backend
-npm run build && npm run preview   # frontend
+npx convex deploy                # backend
+npm run build && npm run preview  # frontend
 ```
 
-## Pagine
+## Pages
 
-| Rotta       | Contenuto                                                     |
-| ----------- | ------------------------------------------------------------- |
-| `/`         | Logo, “Ricevi foto”, “Invia foto”, inserimento codice manuale   |
-| `/receive`  | QR grande, codice sessione, stato, foto realtime, chiudi sessione |
-| `/r/:token` | Pagina mittente: seleziona/scatta, anteprima, invio con progresso |
-| `/expired`  | “Questa sessione è scaduta o non è più disponibile.”            |
-| `/privacy`  | Informativa privacy                                           |
-| `/terms`    | Termini d’uso                                                  |
+| Route       | Content                                                             |
+| ----------- | ------------------------------------------------------------------- |
+| `/`         | Logo, “Receive photos”, “Send photos”, manual session-code entry      |
+| `/receive`  | Big QR, session code, status, realtime photos, close session          |
+| `/r/:token` | Sender page: select/capture, preview, upload with progress            |
+| `/expired`  | “This session has expired or is no longer available.”                 |
+| `/privacy`  | Privacy policy                                                        |
+| `/terms`    | Terms of use                                                          |
+
+## Languages
+
+Italian is the default; English is selected automatically from the browser
+language, and both can be switched at any time from the header.
