@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { DatabaseReader, MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 
@@ -20,9 +21,13 @@ export const PURGE_GRACE_MS = 60 * 60 * 1000;
 
 export type SessionStatus = "active" | "closed" | "expired";
 
-/** Throws a coded error the client can map to a localized message. */
+/**
+ * Throws a coded error the client can map to a localized message.
+ * ConvexError is used so the code reaches the client even on production
+ * deployments, where plain thrown messages are redacted.
+ */
 export function fail(code: string): never {
-  throw new Error(`Paldrop:${code}`);
+  throw new ConvexError({ code });
 }
 
 export function isValidToken(token: unknown): token is string {

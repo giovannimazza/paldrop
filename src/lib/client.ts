@@ -20,8 +20,15 @@ const CODE_ERROR_PATTERN = /Paldrop:([A-Z_]+)/;
 
 /** Extracts a coded backend error, falling back to a network/unknown bucket. */
 export function errorCodeOf(error: unknown): string {
+  // ConvexError payload: { code: "SESSION_EXPIRED" } (survives production redaction)
+  const data = (error as { data?: unknown } | null)?.data;
+  if (data && typeof data === "object" && typeof (data as { code?: unknown }).code === "string") {
+    return (data as { code: string }).code;
+  }
   const message = String(
-    (error as { data?: unknown } | null)?.data ?? (error instanceof Error ? error.message : error) ?? ""
+    (error as { data?: unknown } | null)?.data ??
+      (error instanceof Error ? error.message : error) ??
+      ""
   );
   const match = message.match(CODE_ERROR_PATTERN);
   if (match) return match[1];

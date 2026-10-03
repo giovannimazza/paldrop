@@ -93,14 +93,37 @@ node scripts/upload-photo.mjs <token> scripts/test-photo.png
 
 ## Deploy
 
-The app deploys from Freebuff (frontend + Convex): `npx convex deploy`
-publishes the schema, functions and cron, while the frontend reads
-`VITE_CONVEX_URL`. Alternatively:
+Backend (production):
 
 ```bash
-npx convex deploy                # backend
-npm run build && npm run preview  # frontend
+npx convex deployment token create paldrop-prod --deployment prod --save-env .env.production
+npx convex deploy --env-file .env.production
 ```
+
+`.env.production` also carries `VITE_CONVEX_URL`, so `npm run build` bakes the
+production backend URL into the client (deploy keys are never bundled: only
+`VITE_*` variables reach the browser). Current production backend:
+`https://spotted-manatee-851.convex.cloud`.
+
+Frontend: `.github/workflows/pages.yml` builds and publishes `dist/` to GitHub
+Pages on every push to `main` (enable **Settings → Pages → Source: GitHub
+Actions** once). Local check: `npm run build && npm run preview`.
+
+## Android APK
+
+The web app is wrapped with Capacitor, so an installable APK can be built
+locally (Android SDK + JDK 21 required):
+
+```bash
+npx cap sync android
+cd android
+./gradlew assembleDebug          # or gradlew.bat on Windows
+# android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Install it on the phone by copying the file and allowing "install from
+unknown sources" for your file manager. Scanning still happens with the phone
+camera: it opens the hosted send page, so the frontend must be deployed.
 
 ## Pages
 

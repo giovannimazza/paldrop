@@ -23,6 +23,9 @@ function check(label, condition, detail = "") {
 }
 
 function errorCode(error) {
+  // Preferred channel: ConvexError payload (works on production deployments).
+  const data = error?.data;
+  if (data && typeof data.code === "string") return data.code;
   const message = error instanceof Error ? error.message : String(error);
   return message.match(/Paldrop:([A-Z_]+)/)?.[1] ?? message;
 }
