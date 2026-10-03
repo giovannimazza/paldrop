@@ -1,18 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "react-router-dom";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 import { hasKey, useI18n, type TKey } from "../i18n";
 import { ErrorPanel, StatusBadge } from "../components/Layout";
-import {
-  errorCodeOf,
-  formatBytes,
-  formatCountdown,
-  readImageDimensions,
-  resolveMime,
-  uploadWithProgress,
-} from "../lib/client";
+import { errorCodeOf, formatBytes, formatCountdown } from "../lib/client";
+import { uploadFile, useBackendMode, useSessionInfo } from "../lib/backend";
 
 type Phase = "idle" | "sending" | "done";
 
@@ -20,9 +11,8 @@ export function Send() {
   const { token = "" } = useParams<{ token: string }>();
   const { t, lang } = useI18n();
 
-  const session = useQuery(api.sessions.getSessionByToken, { token });
-  const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
-  const uploadPhoto = useAction(api.photos.uploadPhoto);
+  const backend = useBackendMode();
+  const session = useSessionInfo(backend, token);
 
   const [selected, setSelected] = useState<File[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -88,20 +78,14 @@ export function Send() {
 
     try {
       for (const file of selected) {
-        const dimensions = await readImageDimensions(file);
-        const uploadUrl = await generateUploadUrl({ token });
-        const storageId = await uploadWithProgress(uploadUrl, file, (fraction) => {
-          const current = doneBytes + file.size * fraction;
-          setProgress(Math.min(99, Math.round((current / total) * 100)));
-        });
-        await uploadPhoto({
+        await uploadFile({
+          mode: backend,
           token,
-          storageId: storageId as Id<"_storage">,
-          fileName: file.name,
-          mimeType: resolveMime(file),
-          fileSize: file.size,
-          width: dimensions.width,
-          height: dimensions.height,
+          file,
+          onProgress: (fraction) => {
+            const current = doneBytes + file.size * fraction;
+            setProgress(Math.min(99, Math.round((current / total) * 100)));
+          },
         });
         doneBytes += file.size;
         setProgress(Math.round((doneBytes / total) * 100));

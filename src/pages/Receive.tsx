@@ -1,34 +1,38 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 import { hasKey, useI18n, type TKey } from "../i18n";
 import { StatusBadge } from "../components/Layout";
 import {
-  absoluteSessionUrl,
   downloadFile,
   ensureExtension,
   errorCodeOf,
   formatBytes,
   formatCountdown,
-  publicAppBaseUrl,
 } from "../lib/client";
+import {
+  acceptPhoto,
+  closeSession,
+  createSession,
+  deletePhoto,
+  extendSession,
+  isNativeApp,
+  localServerUrl,
+  rejectPhoto,
+  sessionUrl,
+  startLocalServer,
+  stopLocalServer,
+  useBackendMode,
+  usePhotosInfo,
+  useSessionInfo,
+  type PhotoInfo,
+} from "../lib/backend";
 
 const TOKEN_KEY = "paldrop.receive.token";
 const MODE_KEY = "paldrop.receive.mode";
 
 type Mode = "auto" | "manual";
 
-type Photo = {
-  id: Id<"photos">;
-  fileName: string;
-  mimeType: string;
-  fileSize: number;
-  status: "pending" | "accepted" | "rejected";
-  uploadedAt: number;
-  url: string | null;
-};
+type Photo = PhotoInfo;
 
 type PhotoCardProps = {
   photo: Photo;
@@ -116,19 +120,12 @@ export function Receive() {
   const [now, setNow] = useState(() => Date.now());
   const [extending, setExtending] = useState(false);
   const [extendedNote, setExtendedNote] = useState(false);
+  const [serverBusy, setServerBusy] = useState(false);
+  const [serverError, setServerError] = useState(false);
 
-  const session = useQuery(
-    api.sessions.getSessionByToken,
-    token ? { token } : "skip"
-  );
-  const photoData = useQuery(api.photos.listPhotos, token ? { token } : "skip");
-
-  const createSession = useMutation(api.sessions.createSession);
-  const closeSession = useMutation(api.sessions.closeSession);
-  const extendSession = useMutation(api.sessions.extendSession);
-  const acceptPhoto = useMutation(api.photos.acceptPhoto);
-  const rejectPhoto = useMutation(api.photos.rejectPhoto);
-  const deletePhoto = useMutation(api.photos.deletePhoto);
+  const backend = useBackendMode();
+  const session = useSessionInfo(backend, token);
+  const photoData = usePhotosInfo(backend, token);
 
   // Tick every second for the countdown and lazy expiry.
   useEffect(() => {
@@ -149,14 +146,16 @@ export function Receive() {
     }
   }, [token, session]);
 
-  // Render the QR code for the current session URL.
+  // Render the QR code for the current session URL (local server URL when
+  // the offline backend is active, the hosted app otherwise).
   useEffect(() => {
     if (!token) {
       setQrDataUrl(null);
       return;
     }
+    if (!backend) return; // still probing: keep the previous QR
     let cancelled = false;
-    QRCode.toDataURL(absoluteSessionUrl(token), {
+    QRCode.toDataURL(sessionUrl(backend, token), {
       margin: 4,
       width: 720,
       errorCorrectionLevel: "H",
@@ -171,16 +170,13 @@ export function Receive() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, backend]);
 
   const handleCreate = useCallback(async () => {
     setCreating(true);
     setErrorCode(null);
     try {
-      const created = await createSession({
-        autoAccept: mode === "auto",
-        origin: publicAppBaseUrl(),
-      });
+      const created = await createSession(backend, mode === "auto");
       try {
         localStorage.setItem(TOKEN_KEY, created.token);
         localStorage.setItem(MODE_KEY, mode);
@@ -194,26 +190,26 @@ export function Receive() {
     } finally {
       setCreating(false);
     }
-  }, [createSession, mode]);
+  }, [backend, createSession, mode]);
 
   const handleClose = useCallback(async () => {
     if (!token) return;
     setErrorCode(null);
     try {
-      await closeSession({ token });
+      await closeSession(backend, token);
       setConfirmClose(false);
       setNow(Date.now());
     } catch (error) {
       setErrorCode(errorCodeOf(error));
     }
-  }, [closeSession, token]);
+  }, [backend, closeSession, token]);
 
   const handleExtend = useCallback(async () => {
     if (!token) return;
     setErrorCode(null);
     setExtending(true);
     try {
-      await extendSession({ token });
+      await extendSession(backend, token);
       setNow(Date.now());
       setExtendedNote(true);
       window.setTimeout(() => setExtendedNote(false), 4000);
@@ -222,7 +218,47 @@ export function Receive() {
     } finally {
       setExtending(false);
     }
-  }, [extendSession, token]);
+  }, [backend, extendSession, token]);
+
+  const handleStartServer = useCallback(async () => {
+    setServerBusy(true);
+    setServerError(false);
+    setErrorCode(null);
+    try {
+      await startLocalServer();
+      // A token from the cloud backend means nothing locally: start fresh.
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+      } catch {
+        // ignore
+      }
+      setToken(null);
+      setQrDataUrl(null);
+    } catch {
+      setServerError(true);
+    } finally {
+      setServerBusy(false);
+    }
+  }, []);
+
+  const handleStopServer = useCallback(async () => {
+    setServerBusy(true);
+    setServerError(false);
+    try {
+      await stopLocalServer();
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+      } catch {
+        // ignore
+      }
+      setToken(null);
+      setQrDataUrl(null);
+    } catch {
+      setServerError(true);
+    } finally {
+      setServerBusy(false);
+    }
+  }, []);
 
   const handleNewSession = useCallback(() => {
     try {
@@ -236,15 +272,16 @@ export function Receive() {
   }, []);
 
   const runPhotoAction = useCallback(
-    async (action: Promise<unknown>) => {
+    async (action: (photoId: string) => Promise<void>, photoId: string) => {
       setErrorCode(null);
+      if (!token) return;
       try {
-        await action;
+        await action(photoId);
       } catch (error) {
         setErrorCode(errorCodeOf(error));
       }
     },
-    []
+    [token]
   );
 
   const photos = useMemo<Photo[]>(() => photoData?.photos ?? [], [photoData]);
@@ -285,6 +322,46 @@ export function Receive() {
           {hasKey(`errors.${errorCode}`)
             ? t(`errors.${errorCode}` as TKey)
             : t("errors.UNKNOWN")}
+        </div>
+      )}
+
+      {serverError && (
+        <div className="banner banner-error" role="alert">
+          {t("server.startFailed")}
+        </div>
+      )}
+
+      {isNativeApp() && (
+        <div className="panel server-panel">
+          <p className="panel-title">{t("server.title")}</p>
+          {backend?.kind === "local" ? (
+            <>
+              <p className="hint-text small">
+                {t("server.running")} <code>{localServerUrl(backend)}</code>
+              </p>
+              <p className="hint-text small">{t("server.qrHint")}</p>
+              <button
+                type="button"
+                className="btn btn-ghost btn-block"
+                onClick={handleStopServer}
+                disabled={serverBusy}
+              >
+                {serverBusy ? t("common.loading") : t("server.stop")}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="hint-text small">{t("server.hint")}</p>
+              <button
+                type="button"
+                className="btn btn-secondary btn-block"
+                onClick={handleStartServer}
+                disabled={serverBusy || !backend}
+              >
+                {serverBusy ? t("server.starting") : t("server.start")}
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -356,6 +433,9 @@ export function Receive() {
             <span className="meta-chip">
               {session.autoAccept ? t("receive.modeAuto") : t("receive.modeManual")}
             </span>
+            {backend?.kind === "local" && (
+              <span className="meta-chip">{t("server.localChip")}</span>
+            )}
           </div>
 
           {session.status === "active" && (
@@ -397,9 +477,15 @@ export function Receive() {
                         photo={photo}
                         lang={lang}
                         labels={labels}
-                        onAccept={() => runPhotoAction(acceptPhoto({ token, photoId: photo.id }))}
-                        onReject={() => runPhotoAction(rejectPhoto({ token, photoId: photo.id }))}
-                        onDelete={() => runPhotoAction(deletePhoto({ token, photoId: photo.id }))}
+                        onAccept={() =>
+                          runPhotoAction((photoId) => acceptPhoto(backend, token, photoId), photo.id)
+                        }
+                        onReject={() =>
+                          runPhotoAction((photoId) => rejectPhoto(backend, token, photoId), photo.id)
+                        }
+                        onDelete={() =>
+                          runPhotoAction((photoId) => deletePhoto(backend, token, photoId), photo.id)
+                        }
                       />
                     ))}
                   </div>
@@ -428,7 +514,9 @@ export function Receive() {
                             photo.mimeType
                           )
                         }
-                        onDelete={() => runPhotoAction(deletePhoto({ token, photoId: photo.id }))}
+                        onDelete={() =>
+                          runPhotoAction((photoId) => deletePhoto(backend, token, photoId), photo.id)
+                        }
                       />
                     ))}
                   </div>

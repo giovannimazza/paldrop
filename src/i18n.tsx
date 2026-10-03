@@ -55,6 +55,18 @@ const it = {
   "receive.closeWarning": "Le foto verranno eliminate definitivamente.",
   "receive.newSession": "Crea nuova sessione",
 
+  "server.title": "Server offline",
+  "server.hint":
+    "Nessuna linea? Avvia un server sul telefono: entrambi i telefoni devono stare sulla stessa rete Wi-Fi, non serve internet.",
+  "server.start": "Avvia server offline",
+  "server.starting": "Avvio server…",
+  "server.stop": "Ferma server",
+  "server.running": "Server attivo su",
+  "server.qrHint":
+    "Il QR punta al server locale: l’altro telefono aprirà Paldrop da questa rete.",
+  "server.localChip": "Rete locale",
+  "server.startFailed": "Impossibile avviare il server locale. Riprova.",
+
   "status.active": "Attiva",
   "status.waiting": "In attesa",
   "status.expired": "Scaduta",
@@ -187,6 +199,18 @@ const en: Record<TKey, string> = {
   "receive.closeCancel": "Cancel",
   "receive.closeWarning": "Photos will be permanently deleted.",
   "receive.newSession": "Create new session",
+
+  "server.title": "Offline server",
+  "server.hint":
+    "No signal? Start a server on this phone: both phones must be on the same Wi-Fi network, no internet needed.",
+  "server.start": "Start offline server",
+  "server.starting": "Starting server…",
+  "server.stop": "Stop server",
+  "server.running": "Server running at",
+  "server.qrHint":
+    "The QR points at the local server: the other phone opens Paldrop from this network.",
+  "server.localChip": "Local network",
+  "server.startFailed": "Could not start the local server. Try again.",
 
   "status.active": "Active",
   "status.waiting": "Waiting",

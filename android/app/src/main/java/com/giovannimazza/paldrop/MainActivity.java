@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(MediaSavePlugin.class);
+        registerPlugin(LocalServerPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

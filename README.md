@@ -47,6 +47,32 @@ Web Activity, which is a separate build step.
   deletes expired sessions, their photos and the storage blobs, then purges
   the leftover records.
 
+## Offline mode (no internet)
+
+The APK can host the backend itself, for when there is no mobile data or
+Wi-Fi uplink:
+
+1. On the receiving phone open **Ricevi foto** and tap **Avvia server offline**.
+2. The phone starts a local HTTP server (Java, port `8787`) that serves both
+   the web app and a REST API mirroring the Convex one (sessions, uploads,
+   accept/reject/delete, extend, close, expiry).
+3. The QR code then points at `http://<phone-ip>:8787/r/<token>`: the sending
+   phone scans it and runs the very same app served by the local server —
+   no app install and no internet required, just both phones on the same
+   network (same Wi-Fi, or the receiver's hotspot).
+
+Relevant pieces:
+
+- `android/.../local/LocalHttpServer.java` — pure Java backend (no Android
+  imports, so it is smoke-tested on a desktop JVM).
+- `android/.../LocalServerPlugin.java` — Capacitor plugin (`PaldropLocal`:
+  start/stop/status + LAN IP lookup).
+- `src/lib/backend.ts` — dual backend layer: realtime Convex hooks in cloud
+  mode, one-second REST polling in local mode; operations branch per call.
+- The WebView uses `androidScheme: http` so the APK origin can reach the
+  plain-HTTP local server, and the manifest declares `usesCleartextTraffic`
+  plus `<queries>` for `ACTION_IMAGE_CAPTURE`.
+
 ## Structure
 
 ```
@@ -61,8 +87,11 @@ src/
   components/   # Layout, Logo, ErrorBoundary
   i18n.tsx      # IT/EN dictionary with browser-language detection
   lib/client.ts # codes, upload with progress, download, formatting
+  lib/backend.ts # cloud/offline dual backend (mode detection, ops, polling)
+android/.../local/LocalHttpServer.java  # offline backend served by the APK
 scripts/
-  smoke.mjs           # server-side verification suite (28 checks)
+  smoke.mjs           # cloud server-side verification suite (32 checks)
+  smoke-local.mjs     # offline backend suite (33 checks)
   upload-photo.mjs    # simulates the sending phone
   make-test-image.mjs # generates a test PNG
 ```
@@ -87,8 +116,15 @@ npm run dev         # http://localhost:5173
 npm run typecheck                       # tsc over src + convex
 npm run build                           # typecheck + production bundle
 node scripts/make-test-image.mjs        # test PNG
-node scripts/smoke.mjs                  # 28 server-side checks
+node scripts/smoke.mjs                  # 32 cloud checks (Convex)
 node scripts/upload-photo.mjs <token> scripts/test-photo.png
+
+# Offline backend (pure Java): compile, run, then test
+javac -d .tmp/localserver/out \
+  android/app/src/main/java/com/giovannimazza/paldrop/local/LocalHttpServer.java \
+  scripts/local-server/LocalServerMain.java
+java -cp .tmp/localserver/out LocalServerMain dist .tmp/localserver/data 8787
+node scripts/smoke-local.mjs            # 33 offline checks
 ```
 
 ## Deploy
