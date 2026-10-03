@@ -36,7 +36,9 @@ console.log("\n2/4  Syncing assets into the Android project");
 execSync("npx cap sync android", { stdio: "inherit", env });
 
 console.log("\n3/4  Compiling the APK (Gradle assembleDebug)");
-const gradle = isWindows ? "gradlew.bat assembleDebug --no-daemon" : "./gradlew assembleDebug --no-daemon";
+const gradle = isWindows
+  ? ".\\gradlew.bat assembleDebug --no-daemon"
+  : "./gradlew assembleDebug --no-daemon";
 execSync(gradle, { stdio: "inherit", env, cwd: "android" });
 
 console.log("\n4/4  Copying APK to the project root");
