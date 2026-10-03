@@ -38,4 +38,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Only needed on Android 9 and lower to write the public Pictures/Download
+         folders; Android 10+ uses MediaStore and needs no permission. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 </manifest>

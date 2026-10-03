@@ -177,6 +177,7 @@ export const listPhotos = query({
         height: p.height,
         status: p.status,
         uploadedAt: p.uploadedAt,
+        expiresAt: p.expiresAt,
         url: await ctx.storage.getUrl(p.storageId),
       }))
     );

@@ -219,6 +219,11 @@ a {
   text-align: center;
 }
 
+.success-text {
+  color: var(--ok, #16a34a);
+  text-align: center;
+}
+
 /* ---------- Buttons ---------- */
 .btn {
   display: inline-flex;

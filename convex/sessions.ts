@@ -91,6 +91,30 @@ export const getSessionIdByToken = internalQuery({
   },
 });
 
+/** Extends an active session by 15 minutes, keeping photo expiry in sync. */
+export const EXTEND_MS = 15 * 60 * 1000;
+
+export const extendSession = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    const session = await requireActiveSession(ctx, token);
+    const expiresAt = Math.max(Date.now(), session.expiresAt) + EXTEND_MS;
+
+    // Photos carry their own expiry (used by the cleanup sweep), so it must
+    // move together with the session or they would be deleted early.
+    const photos = await ctx.db
+      .query("photos")
+      .withIndex("by_session", (q) => q.eq("sessionId", session._id))
+      .collect();
+    for (const photo of photos) {
+      await ctx.db.patch(photo._id, { expiresAt });
+    }
+    await ctx.db.patch(session._id, { expiresAt });
+
+    return { expiresAt, extendedByMs: EXTEND_MS, photosUpdated: photos.length };
+  },
+});
+
 /** Closes a session from the receiver and immediately deletes all stored photos. */
 export const closeSession = mutation({
   args: { token: v.string() },

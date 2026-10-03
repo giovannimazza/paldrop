@@ -39,6 +39,8 @@ const it = {
   "receive.codeHelp":
     "Non riesci a scansionare? Su un altro telefono apri Paldrop, premi “Invia foto” e inserisci questo codice.",
   "receive.expiresIn": "Scade tra",
+  "receive.extend": "Estendi di 15 minuti",
+  "receive.extendDone": "Sessione estesa di 15 minuti.",
   "receive.expiredNote": "Sessione scaduta: le foto sono state eliminate.",
   "receive.closedNote": "Sessione chiusa: le foto sono state eliminate.",
   "receive.stats": "{files} foto · {size}",
@@ -170,6 +172,8 @@ const en: Record<TKey, string> = {
   "receive.codeHelp":
     "Can’t scan? On the other phone open Paldrop, tap “Send photos” and enter this code.",
   "receive.expiresIn": "Expires in",
+  "receive.extend": "Extend by 15 minutes",
+  "receive.extendDone": "Session extended by 15 minutes.",
   "receive.expiredNote": "Session expired: photos have been deleted.",
   "receive.closedNote": "Session closed: photos have been deleted.",
   "receive.stats": "{files} photos · {size}",

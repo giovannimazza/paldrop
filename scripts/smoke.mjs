@@ -79,6 +79,7 @@ check("createSession sets a 15 min expiry", Math.abs(created.expiresAt - Date.no
 check("createSession exposes limits", created.maxPhotos === 20 && created.maxTotalBytes === MAX_TOTAL_BYTES);
 
 const session = await client.query(api.sessions.getSessionByToken, { token: created.token });
+const beforeExtend = session.expiresAt;
 check("getSessionByToken returns active session", session?.status === "active" && session.autoAccept === false);
 check("getSessionByToken never leaks the token list", session?.path === `/r/${created.token}`);
 check("getSessionByToken returns null for unknown token", (await client.query(api.sessions.getSessionByToken, { token: "A".repeat(32) })) === null);
@@ -86,6 +87,23 @@ check("listPhotos returns null for unknown token", (await client.query(api.photo
 check(
   "malformed token returns null",
   (await client.query(api.sessions.getSessionByToken, { token: "short" })) === null
+);
+
+// --- session extension ------------------------------------------------------
+console.log("Session extension");
+const extended = await client.mutation(api.sessions.extendSession, { token: created.token });
+check(
+  "extendSession adds 15 minutes",
+  extended.extendedByMs === 15 * 60 * 1000 &&
+    extended.expiresAt - beforeExtend >= 15 * 60 * 1000 - 5000,
+  JSON.stringify(extended)
+);
+const reRead = await client.query(api.sessions.getSessionByToken, { token: created.token });
+check("extendSession persists the new expiry", reRead.expiresAt === extended.expiresAt, String(reRead.expiresAt));
+await expectErrorCode(
+  "extendSession rejects unknown token",
+  client.mutation(api.sessions.extendSession, { token: "Y".repeat(32) }),
+  "SESSION_NOT_FOUND"
 );
 
 // --- upload validation ------------------------------------------------------
@@ -128,6 +146,17 @@ check("listPhotos shows the pending photo", photos.photos.length === 1 && photos
 await client.mutation(api.photos.acceptPhoto, { token: created.token, photoId });
 const afterAccept = await client.query(api.photos.listPhotos, { token: created.token });
 check("acceptPhoto moves photo to accepted", afterAccept.photos[0].status === "accepted");
+
+// Extending must move photo expiry too, or the cleanup sweep deletes them early.
+const photosBeforeExtend = afterAccept;
+const secondExtend = await client.mutation(api.sessions.extendSession, { token: created.token });
+const photosAfterExtend = await client.query(api.photos.listPhotos, { token: created.token });
+check(
+  "extendSession moves photo expiry with the session",
+  photosAfterExtend.photos[0].expiresAt === secondExtend.expiresAt &&
+    photosAfterExtend.photos[0].expiresAt > photosBeforeExtend.photos[0].expiresAt,
+  JSON.stringify({ after: photosAfterExtend.photos[0].expiresAt, session: secondExtend.expiresAt })
+);
 await client.mutation(api.photos.rejectPhoto, { token: created.token, photoId });
 const afterReject = await client.query(api.photos.listPhotos, { token: created.token });
 check("rejectPhoto hides the photo", afterReject.photos.length === 0);

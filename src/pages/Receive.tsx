@@ -114,6 +114,8 @@ export function Receive() {
   const [confirmClose, setConfirmClose] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [extending, setExtending] = useState(false);
+  const [extendedNote, setExtendedNote] = useState(false);
 
   const session = useQuery(
     api.sessions.getSessionByToken,
@@ -123,6 +125,7 @@ export function Receive() {
 
   const createSession = useMutation(api.sessions.createSession);
   const closeSession = useMutation(api.sessions.closeSession);
+  const extendSession = useMutation(api.sessions.extendSession);
   const acceptPhoto = useMutation(api.photos.acceptPhoto);
   const rejectPhoto = useMutation(api.photos.rejectPhoto);
   const deletePhoto = useMutation(api.photos.deletePhoto);
@@ -204,6 +207,22 @@ export function Receive() {
       setErrorCode(errorCodeOf(error));
     }
   }, [closeSession, token]);
+
+  const handleExtend = useCallback(async () => {
+    if (!token) return;
+    setErrorCode(null);
+    setExtending(true);
+    try {
+      await extendSession({ token });
+      setNow(Date.now());
+      setExtendedNote(true);
+      window.setTimeout(() => setExtendedNote(false), 4000);
+    } catch (error) {
+      setErrorCode(errorCodeOf(error));
+    } finally {
+      setExtending(false);
+    }
+  }, [extendSession, token]);
 
   const handleNewSession = useCallback(() => {
     try {
@@ -339,6 +358,22 @@ export function Receive() {
             </span>
           </div>
 
+          {session.status === "active" && (
+            <div className="stack-actions">
+              <button
+                type="button"
+                className="btn btn-ghost btn-lg btn-block"
+                onClick={handleExtend}
+                disabled={extending}
+              >
+                {extending ? t("common.loading") : t("receive.extend")}
+              </button>
+              {extendedNote && (
+                <p className="hint-text small success-text">{t("receive.extendDone")}</p>
+              )}
+            </div>
+          )}
+
           {session.status === "expired" && (
             <div className="banner banner-warn" role="status">
               {t("receive.expiredNote")}
@@ -389,7 +424,8 @@ export function Receive() {
                         onDownload={() =>
                           downloadFile(
                             photo.url as string,
-                            ensureExtension(photo.fileName, photo.mimeType)
+                            ensureExtension(photo.fileName, photo.mimeType),
+                            photo.mimeType
                           )
                         }
                         onDelete={() => runPhotoAction(deletePhoto({ token, photoId: photo.id }))}

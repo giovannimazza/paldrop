@@ -1,5 +1,15 @@
 /** Client-side helpers: codes, downloads, uploads with progress, formatting. */
 
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
+
+/** Native Android plugin bundled in the APK (see android/.../MediaSavePlugin.java). */
+type MediaSaveOptions = { url: string; fileName: string; mimeType: string };
+type MediaSaveResult = { uri: string; bytes: number };
+const MediaSave = registerPlugin<{ save(o: MediaSaveOptions): Promise<MediaSaveResult> }>(
+  "MediaSave"
+);
+
 export const TOKEN_PATTERN = /^[A-Z2-7]{32}$/;
 
 /** Uppercases and strips separators so users can paste codes with spaces/dashes. */
@@ -100,8 +110,32 @@ export function readImageDimensions(
   });
 }
 
-/** Downloads a file through a blob so cross-origin photos land in the gallery. */
-export async function downloadFile(url: string, fileName: string): Promise<void> {
+/**
+ * Saves a photo so the user can actually find it afterwards.
+ * In the APK the WebView has no download manager and ignores the `download`
+ * attribute for cross-origin URLs, so native code does the work; on the web
+ * a blob keeps the file in the browser's downloads.
+ */
+export async function downloadFile(
+  url: string,
+  fileName: string,
+  mimeType: string = "image/jpeg"
+): Promise<void> {
+  if (isNativePlatform()) {
+    try {
+      // 1) Native download straight into MediaStore (gallery / Download).
+      await MediaSave.save({ url, fileName, mimeType });
+      return;
+    } catch {
+      // 2) Fallback: fetch here and write into the public Documents folder.
+      try {
+        await saveViaFilesystem(url, fileName);
+        return;
+      } catch {
+        // 3) Last resort: the plain anchor flow below.
+      }
+    }
+  }
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error("download failed");
@@ -113,6 +147,40 @@ export async function downloadFile(url: string, fileName: string): Promise<void>
     // Fallback: plain link (Convex storage serves with the right headers).
     triggerDownload(url, fileName);
   }
+}
+
+/** True only inside the Capacitor WebView (Android APK). */
+function isNativePlatform(): boolean {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+/** Fetches the photo and writes it into the public Documents/Paldrop folder. */
+async function saveViaFilesystem(url: string, fileName: string): Promise<void> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("download failed");
+  const buffer = await response.arrayBuffer();
+  if (buffer.byteLength === 0) throw new Error("empty file");
+  await Filesystem.writeFile({
+    path: `Paldrop/${fileName}`,
+    data: arrayBufferToBase64(buffer),
+    directory: Directory.Documents,
+    recursive: true,
+  });
+}
+
+/** Chunked base64 encoding: large photos would overflow the stack otherwise. */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
 }
 
 function triggerDownload(href: string, fileName: string) {
