@@ -651,13 +651,19 @@ a {
 
 .photo-actions {
   display: flex;
+  /* Wrap instead of overflowing: the card clips its content, so a third
+     button (Accetta/Rifiuta/Elimina) must move to its own row. */
+  flex-wrap: wrap;
   gap: 8px;
   padding: 10px;
 }
 
 .photo-actions .btn {
-  flex: 1 1 0;
-  padding: 0 8px;
+  /* Grow to fill the row; min-content keeps labels unwrapped and, together
+     with flex-wrap, guarantees nothing is ever clipped by the card. */
+  flex: 1 1 auto;
+  padding: 0 6px;
+  font-size: 14px;
 }
 
 .preview-card img {
