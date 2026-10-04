@@ -80,6 +80,8 @@ const it = {
     "Hotspot non supportato su questo telefono: usa l’hotspot portatile dalle Impostazioni.",
   "server.hotspotPermission": "Permesso negato: l’hotspot richiede l’accesso ai dispositivi Wi-Fi.",
   "server.hotspotFailed": "Impossibile avviare l’hotspot locale. Riprova.",
+  "server.hotspotNoAddress":
+    "Indirizzo del server ancora in aggiornamento: attendi qualche secondo, il QR si aggiorna da solo.",
 
   "status.active": "Attiva",
   "status.waiting": "In attesa",
@@ -246,6 +248,8 @@ const en: Record<TKey, string> = {
     "Hotspot not supported on this phone: use the portable hotspot from Settings.",
   "server.hotspotPermission": "Permission denied: the hotspot needs nearby Wi-Fi access.",
   "server.hotspotFailed": "Could not start the local hotspot. Try again.",
+  "server.hotspotNoAddress":
+    "Server address is still settling: wait a few seconds, the QR refreshes automatically.",
 
   "status.active": "Active",
   "status.waiting": "Waiting",

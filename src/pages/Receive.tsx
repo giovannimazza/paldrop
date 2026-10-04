@@ -16,6 +16,7 @@ import {
   deletePhoto,
   extendSession,
   getLocalHotspot,
+  isLoopbackBase,
   isNativeApp,
   localServerUrl,
   refreshBackendMode,
@@ -243,6 +244,18 @@ export function Receive() {
     setSavedIds({});
   }, [token]);
 
+  // The hotspot's AP interface may get its IP address a little later than
+  // the "started" callback: while the advertised address is still this
+  // device itself, keep re-detecting so the QR self-corrects.
+  const addressPending = Boolean(hotspot) && isLoopbackBase(backend);
+  useEffect(() => {
+    if (!addressPending) return;
+    const id = window.setInterval(() => {
+      void refreshBackendMode().catch(() => undefined);
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [addressPending]);
+
   // On Android, reflect a hotspot that is already running (it survives
   // WebView reloads) and adopt its URL as the local backend address.
   useEffect(() => {
@@ -402,9 +415,11 @@ export function Receive() {
     setHotspotBusy(true);
     setHotspotError(null);
     try {
-      if (backend?.kind !== "local") await startLocalServer();
+      // Hotspot first: the server then reads its address on the freshly
+      // created AP network instead of a stale/loopback one.
       const info = await startLocalHotspot();
       setHotspot(info);
+      if (backend?.kind !== "local") await startLocalServer();
       // The phone's IP changes with the hotspot: re-read the server URL so
       // the session QR points at an address the sender can actually reach.
       await refreshBackendMode();
@@ -572,11 +587,13 @@ export function Receive() {
                       <figcaption>{t("server.hotspotStep1")}</figcaption>
                     </figure>
                   )}
-                  {hotspotAppQr && (
+                  {hotspotAppQr && !addressPending ? (
                     <figure className="hotspot-qr">
                       <img src={hotspotAppQr} alt={t("server.hotspotStep2")} />
                       <figcaption>{t("server.hotspotStep2")}</figcaption>
                     </figure>
+                  ) : (
+                    <p className="hint-text small">{t("server.hotspotNoAddress")}</p>
                   )}
                 </div>
                 <button

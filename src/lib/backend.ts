@@ -231,11 +231,31 @@ export async function getLocalHotspot(): Promise<HotspotState | null> {
 }
 
 /**
+ * True when a local base URL points at the phone itself (127.0.0.1/localhost):
+ * other phones cannot reach that address, so it must never end up in a QR code.
+ */
+export function isLoopbackBase(mode: BackendMode | null): boolean {
+  if (mode?.kind !== "local" || !mode.base) return false;
+  return /^https?:\/\/(localhost|127(\.\d{1,3}){3}|\[::1\])(:\d+)?([/?#]|$)/i.test(
+    mode.base
+  );
+}
+
+/**
  * Re-detects the backend: the advertised server URL changes when the
  * hotspot (and with it the phone's IP address) comes up or goes down.
+ *
+ * The AP interface receives its IP address a moment after the system reports
+ * the hotspot as started, so while the URL is still this device itself we
+ * keep re-detecting briefly instead of baking 127.0.0.1 into the QR code.
  */
 export async function refreshBackendMode(): Promise<BackendMode> {
-  return applyMode(await detect());
+  let mode = await detect();
+  for (let attempt = 0; attempt < 5 && isLoopbackBase(mode); attempt++) {
+    await new Promise((resolve) => window.setTimeout(resolve, 400));
+    mode = await detect();
+  }
+  return applyMode(mode);
 }
 
 // --- shared plumbing --------------------------------------------------------
