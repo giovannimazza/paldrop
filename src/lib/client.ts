@@ -216,6 +216,10 @@ function isNativePlatform(): boolean {
 async function saveViaFilesystem(url: string, fileName: string): Promise<void> {
   const response = await fetch(url);
   if (!response.ok) throw new Error("download failed");
+  // An HTML body means we hit a page (e.g. an SPA shell), not the photo:
+  // saving it would create a corrupt white file in the gallery.
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  if (contentType.includes("text/html")) throw new Error("html response");
   const buffer = await response.arrayBuffer();
   if (buffer.byteLength === 0) throw new Error("empty file");
   await Filesystem.writeFile({

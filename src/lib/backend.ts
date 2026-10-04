@@ -522,6 +522,22 @@ export function usePhotosInfo(
     mode && mode.kind === "local" && token ? `${mode.base}/api/sessions/${token}/photos` : null
   );
   if (!mode) return undefined;
-  if (mode.kind === "local") return localPhotos;
+  if (mode.kind === "local") {
+    if (!localPhotos) return localPhotos;
+    // The server sends photo URLs as "/api/files/<id>". Inside the APK the
+    // page lives at Capacitor's http://localhost origin, which intercepts
+    // extensionless paths and answers with index.html: an <img> would show
+    // a broken white square and a save would store that HTML. Resolve the
+    // URL against the local server's base so it is absolute.
+    const base = mode.base;
+    return {
+      ...localPhotos,
+      photos: localPhotos.photos.map((photo) =>
+        photo.url && photo.url.startsWith("/")
+          ? { ...photo, url: `${base.replace(/\/+$/, "")}${photo.url}` }
+          : photo
+      ),
+    };
+  }
   return convexPhotos as PhotosInfo | null | undefined;
 }

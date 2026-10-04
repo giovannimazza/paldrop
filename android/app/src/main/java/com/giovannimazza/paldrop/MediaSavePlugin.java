@@ -133,6 +133,13 @@ public class MediaSavePlugin extends Plugin {
             connection.disconnect();
             throw new IllegalStateException("HTTP " + status);
         }
+        // An HTML body means we hit a page (e.g. an SPA shell), not the
+        // photo: saving it would create a corrupt white file in the gallery.
+        String contentType = connection.getContentType();
+        if (contentType != null && contentType.toLowerCase(java.util.Locale.ROOT).contains("text/html")) {
+            connection.disconnect();
+            throw new IllegalStateException("unexpected HTML response");
+        }
         try (InputStream in = connection.getInputStream()) {
             java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
             byte[] chunk = new byte[64 * 1024];
