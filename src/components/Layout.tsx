@@ -90,6 +90,16 @@ export function Layout({ children }: { children: ReactNode }) {
         <span className="footer-sep" aria-hidden="true">
           ·
         </span>
+        <a
+          href="https://github.com/giovannimazza/paldrop"
+          target="_blank"
+          rel="noreferrer"
+        >
+          {t("nav.opensource")}
+        </a>
+        <span className="footer-sep" aria-hidden="true">
+          ·
+        </span>
         <span className="footer-build" title="build">{APP_BUILD}</span>
       </footer>
     </div>

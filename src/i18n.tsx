@@ -12,6 +12,7 @@ const it = {
   "app.tagline": "Nessun numero, nessun account, nessun contatto.",
   "nav.privacy": "Privacy",
   "nav.terms": "Termini d’uso",
+  "nav.opensource": "Progetto open source",
   "nav.theme": "Cambia tema",
 
   "home.receive": "Ricevi foto",
@@ -177,6 +178,7 @@ const en: Record<TKey, string> = {
   "app.tagline": "No number, no account, no contact.",
   "nav.privacy": "Privacy",
   "nav.terms": "Terms of use",
+  "nav.opensource": "Open source project",
   "nav.theme": "Switch theme",
 
   "home.receive": "Receive photos",
