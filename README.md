@@ -6,14 +6,21 @@ No number, no account, no contact.
 Stack: **React + Vite + TypeScript** on the client, **Convex** for the
 database, sessions, file storage and realtime updates.
 
-## No APK: Paldrop is a web app
+## Web app or APK
 
-Paldrop runs in the browser, so there is nothing to install and no `.apk`
-is produced — the "app" is the URL you open on both phones. On the receiving
-phone you can add it to the home screen (Safari → *Add to Home Screen*); it
-opens full-screen on iOS thanks to the `apple-mobile-web-app-capable` meta
-tag. A real APK would require wrapping the app with Capacitor or a Trusted
-Web Activity, which is a separate build step.
+For the classic online flow nothing needs to be installed: Paldrop runs in
+the browser and the "app" is the URL you open on both phones. On the
+receiving phone you can add it to the home screen (Safari → *Add to Home
+Screen*); it opens full-screen on iOS thanks to the `apple-mobile-web-app-capable`
+meta tag.
+
+For the **offline mode** (see below) there is an installable APK, wrapped
+with Capacitor: it hosts the backend itself and can start a local-only
+hotspot, so the two phones transfer photos with no internet at all.
+Download `Paldrop.apk` from the
+[Releases](https://github.com/giovannimazza/paldrop/releases) page and allow
+"install from unknown sources" for your file manager. The footer of the
+installed app shows the exact build stamp.
 
 ## Flow
 
@@ -92,6 +99,7 @@ android/.../local/LocalHttpServer.java  # offline backend served by the APK
 scripts/
   smoke.mjs           # cloud server-side verification suite (32 checks)
   smoke-local.mjs     # offline backend suite (33 checks)
+  build-apk.mjs       # web build + cap sync + APK -> Paldrop.apk
   upload-photo.mjs    # simulates the sending phone
   make-test-image.mjs # generates a test PNG
 ```
@@ -148,19 +156,19 @@ Actions** once). Local check: `npm run build && npm run preview`.
 
 ## Android APK
 
-The web app is wrapped with Capacitor, so an installable APK can be built
-locally (Android SDK + JDK 21 required):
+Prebuilt APKs are attached to every
+[release](https://github.com/giovannimazza/paldrop/releases). To rebuild one
+locally (Android SDK + JDK 21, e.g. `ANDROID_HOME` / `JAVA_HOME`, with a
+fallback to `.android-sdk/` and `.tools/jdk21/`):
 
 ```bash
-npx cap sync android
-cd android
-./gradlew assembleDebug          # or gradlew.bat on Windows
-# android/app/build/outputs/apk/debug/app-debug.apk
+node scripts/build-apk.mjs   # npm run build + cap sync + assembleDebug
+# -> Paldrop.apk copied to the project root
 ```
 
-Install it on the phone by copying the file and allowing "install from
-unknown sources" for your file manager. Scanning still happens with the phone
-camera: it opens the hosted send page, so the frontend must be deployed.
+Scanning still happens with the phone camera: in cloud mode it opens the
+hosted send page (so the frontend must be deployed), while in offline mode
+the QR points at the receiving phone's local server.
 
 ## Pages
 
