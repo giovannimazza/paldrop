@@ -20,6 +20,7 @@ import {
   resolveMime,
   uploadWithProgress,
 } from "./client";
+import { codedError, extractErrorCode, withTimeout } from "./errors";
 
 export type BackendMode = { kind: "convex" } | { kind: "local"; base: string };
 
@@ -169,29 +170,11 @@ export async function stopLocalServer(): Promise<BackendMode> {
 // --- local-only hotspot -----------------------------------------------------
 
 function pluginErrorCode(error: unknown, fallback: string): string {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (typeof code === "string" && /^[A-Z_]+$/.test(code)) return code;
-  const message = String((error as { message?: unknown } | null)?.message ?? "");
-  const match = message.match(
-    /HOTSPOT_UNSUPPORTED|HOTSPOT_FAILED|HOTSPOT_BUSY|PERMISSION_DENIED|SERVER_START_FAILED/
+  return extractErrorCode(
+    error,
+    /HOTSPOT_UNSUPPORTED|HOTSPOT_FAILED|HOTSPOT_BUSY|PERMISSION_DENIED|SERVER_START_FAILED/,
+    fallback
   );
-  return match ? match[0] : fallback;
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(codedError("HOTSPOT_FAILED")), ms);
-    promise.then(
-      (value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        window.clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
 }
 
 /**
@@ -201,7 +184,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export async function startLocalHotspot(): Promise<HotspotState> {
   try {
     // Generous: the system permission dialog may be waiting for the user.
-    const info = await withTimeout(LocalServer.startHotspot(), 120_000);
+    const info = await withTimeout(LocalServer.startHotspot(), 120_000, "HOTSPOT_FAILED");
     if (!info.running || !info.ssid) throw codedError("HOTSPOT_FAILED");
     return { ssid: info.ssid, passphrase: info.passphrase ?? "" };
   } catch (error) {
@@ -259,12 +242,6 @@ export async function refreshBackendMode(): Promise<BackendMode> {
 }
 
 // --- shared plumbing --------------------------------------------------------
-
-function codedError(code: string): Error & { data?: unknown } {
-  const error = new Error(code) as Error & { data?: unknown };
-  error.data = { code };
-  return error;
-}
 
 let httpClient: ConvexHttpClient | null = null;
 

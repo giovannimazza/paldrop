@@ -2,6 +2,7 @@
 
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import { codedError, extractErrorCode, withTimeout } from "./errors";
 
 /** Native Android plugin bundled in the APK (see android/.../MediaSavePlugin.java). */
 type MediaSaveOptions = { url: string; fileName: string; mimeType: string };
@@ -134,7 +135,7 @@ export async function downloadFile(
       // 1) Native download straight into MediaStore (gallery / Download).
       //    On Android 9- this first shows the storage permission prompt.
       //    A stuck native call must not hang the button forever.
-      await withTimeout(MediaSave.save({ url, fileName, mimeType }), 45_000);
+      await withTimeout(MediaSave.save({ url, fileName, mimeType }), 45_000, "SAVE_TIMEOUT");
       return "native";
     } catch (error) {
       failureCode = nativeErrorCode(error);
@@ -142,7 +143,7 @@ export async function downloadFile(
       if (failureCode !== "PERMISSION_DENIED") {
         try {
           // 2) Fallback: fetch here and write into the public Documents folder.
-          await withTimeout(saveViaFilesystem(url, fileName), 45_000);
+          await withTimeout(saveViaFilesystem(url, fileName), 45_000, "SAVE_TIMEOUT");
           return "native-fallback";
         } catch {
           // Keep the original code for the error surfaced below.
@@ -151,7 +152,7 @@ export async function downloadFile(
     }
     // Nothing saved: report why, so the UI can show a real message instead
     // of silently doing nothing (the WebView has no download manager).
-    throw codedDownloadError(failureCode);
+    throw codedError(failureCode);
   }
   try {
     const response = await fetch(url);
@@ -168,36 +169,13 @@ export async function downloadFile(
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(codedDownloadError("SAVE_TIMEOUT")), ms);
-    promise.then(
-      (value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        window.clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
-}
-
-/** Error shaped so errorCodeOf() can read its `data.code`. */
-function codedDownloadError(code: string): Error & { data?: unknown } {
-  const error = new Error(code) as Error & { data?: unknown };
-  error.data = { code };
-  return error;
-}
-
 /** Extracts a coded reason from a Capacitor plugin rejection. */
 function nativeErrorCode(error: unknown): string {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (typeof code === "string" && /^[A-Z_]+$/.test(code)) return code;
-  const message = String((error as { message?: unknown } | null)?.message ?? "");
-  const match = message.match(/PERMISSION_DENIED|MISSING_ARGS|SAVE_TIMEOUT|SAVE_FAILED/);
-  return match ? match[0] : "SAVE_FAILED";
+  return extractErrorCode(
+    error,
+    /PERMISSION_DENIED|MISSING_ARGS|SAVE_TIMEOUT|SAVE_FAILED/,
+    "SAVE_FAILED"
+  );
 }
 
 /** Build stamp baked in by scripts/build-apk.mjs ("dev" for plain builds). */
