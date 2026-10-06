@@ -486,20 +486,12 @@ export function Receive() {
     savedBadge: t("photo.savedBadge"),
   };
 
-  // QR codes for the hotspot flow: first join the phone's Wi-Fi network,
-  // then open Paldrop through the local server.
+  // QR code for the hotspot flow: join the phone's Wi-Fi network with it,
+  // then let the other phone scan the session QR shown below.
   const hotspotWifiPayload = hotspot
     ? `WIFI:T:WPA;S:${escapeWifi(hotspot.ssid)};P:${escapeWifi(hotspot.passphrase)};;`
     : null;
-  const hotspotAppPayload = hotspot
-    ? backend?.kind === "local"
-      ? token
-        ? sessionUrl(backend, token)
-        : localServerUrl(backend)
-      : null
-    : null;
   const hotspotWifiQr = useQrDataUrl(hotspotWifiPayload, 320);
-  const hotspotAppQr = useQrDataUrl(hotspotAppPayload, 320);
 
   const hotspotErrorLabel = hotspotError
     ? hotspotError === "HOTSPOT_UNSUPPORTED"
@@ -586,14 +578,6 @@ export function Receive() {
                       <img src={hotspotWifiQr} alt={t("server.hotspotStep1")} />
                       <figcaption>{t("server.hotspotStep1")}</figcaption>
                     </figure>
-                  )}
-                  {hotspotAppQr && !addressPending ? (
-                    <figure className="hotspot-qr">
-                      <img src={hotspotAppQr} alt={t("server.hotspotStep2")} />
-                      <figcaption>{t("server.hotspotStep2")}</figcaption>
-                    </figure>
-                  ) : (
-                    <p className="hint-text small">{t("server.hotspotNoAddress")}</p>
                   )}
                 </div>
                 <button

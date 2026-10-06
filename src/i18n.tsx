@@ -69,19 +69,16 @@ const it = {
   "server.startFailed": "Impossibile avviare il server locale. Riprova.",
   "server.hotspotTitle": "Hotspot locale (senza Wi-Fi)",
   "server.hotspotHint":
-    "Crea una rete solo tra i due telefoni: unisciti con il primo QR, poi apri Paldrop con il secondo.",
+    "Crea una rete solo tra i due telefoni: unisciti alla rete con il QR qui sotto, poi mostra all'altro telefono il QR della sessione.",
   "server.hotspotStart": "Avvia hotspot locale",
   "server.hotspotStop": "Ferma hotspot",
-  "server.hotspotStep1": "1 · Unisciti alla rete Wi-Fi",
-  "server.hotspotStep2": "2 · Apri Paldrop",
+  "server.hotspotStep1": "Unisciti alla rete Wi-Fi",
   "server.hotspotNetwork": "Rete:",
   "server.hotspotPassword": "Password:",
   "server.hotspotUnsupported":
     "Hotspot non supportato su questo telefono: usa l’hotspot portatile dalle Impostazioni.",
   "server.hotspotPermission": "Permesso negato: l’hotspot richiede l’accesso ai dispositivi Wi-Fi.",
   "server.hotspotFailed": "Impossibile avviare l’hotspot locale. Riprova.",
-  "server.hotspotNoAddress":
-    "Indirizzo del server ancora in aggiornamento: attendi qualche secondo, il QR si aggiorna da solo.",
 
   "status.active": "Attiva",
   "status.waiting": "In attesa",
@@ -237,19 +234,16 @@ const en: Record<TKey, string> = {
   "server.startFailed": "Could not start the local server. Try again.",
   "server.hotspotTitle": "Local hotspot (no Wi-Fi)",
   "server.hotspotHint":
-    "Create a network just for the two phones: join it with the first QR, then open Paldrop with the second.",
+    "Create a network just for the two phones: join it with the QR below, then show the session QR to the other phone.",
   "server.hotspotStart": "Start local hotspot",
   "server.hotspotStop": "Stop hotspot",
-  "server.hotspotStep1": "1 · Join the Wi-Fi network",
-  "server.hotspotStep2": "2 · Open Paldrop",
+  "server.hotspotStep1": "Join the Wi-Fi network",
   "server.hotspotNetwork": "Network:",
   "server.hotspotPassword": "Password:",
   "server.hotspotUnsupported":
     "Hotspot not supported on this phone: use the portable hotspot from Settings.",
   "server.hotspotPermission": "Permission denied: the hotspot needs nearby Wi-Fi access.",
   "server.hotspotFailed": "Could not start the local hotspot. Try again.",
-  "server.hotspotNoAddress":
-    "Server address is still settling: wait a few seconds, the QR refreshes automatically.",
 
   "status.active": "Active",
   "status.waiting": "Waiting",
