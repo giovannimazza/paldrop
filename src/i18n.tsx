@@ -15,6 +15,11 @@ const it = {
   "nav.opensource": "Progetto open source",
   "nav.theme": "Cambia tema",
 
+  "ota.downloading": "Scarico l’aggiornamento…",
+  "ota.ready": "Aggiornamento pronto",
+  "ota.apply": "Riavvia ora",
+  "ota.applying": "Riavvio…",
+
   "home.receive": "Ricevi foto",
   "home.receiveHint": "Crea un QR code e fai scansionare dall’altro telefono.",
   "home.send": "Invia foto",
@@ -179,6 +184,11 @@ const en: Record<TKey, string> = {
   "nav.terms": "Terms of use",
   "nav.opensource": "Open source project",
   "nav.theme": "Switch theme",
+
+  "ota.downloading": "Downloading update…",
+  "ota.ready": "Update ready",
+  "ota.apply": "Restart now",
+  "ota.applying": "Restarting…",
 
   "home.receive": "Receive photos",
   "home.receiveHint": "Create a QR code and let the other phone scan it.",

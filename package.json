@@ -10,10 +10,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "convex:dev": "convex dev",
-    "convex:deploy": "convex deploy"
+    "convex:deploy": "convex deploy",
+    "ota:bundle": "node scripts/build-ota-bundle.mjs"
   },
   "dependencies": {
     "@capacitor/filesystem": "^8.1.4",
+    "@capgo/capacitor-updater": "^8.0.0",
     "convex": "^1.0.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",

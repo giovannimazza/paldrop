@@ -24,6 +24,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Built first: it rebuilds dist/ with the APK's settings (base "/"), so
+      # the Pages build below has to be the one that wins.
+      - name: Build the OTA bundle
+        run: npm run ota:bundle
+        env:
+          PALDROP_PUBLIC_URL: https://giovannimazza.github.io/paldrop/
       - name: Build
         run: npm run build
         env:
@@ -32,6 +38,8 @@ jobs:
           # Public backend URL, committed in .env.production (no secrets here)
       - name: SPA fallback (so /r/<token> loads the app)
         run: cp dist/index.html dist/404.html
+      - name: Publish the OTA bundle and manifest at the site root
+        run: cp ota/* dist/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

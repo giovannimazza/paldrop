@@ -10,5 +10,13 @@
   },
   "server": {
     "androidScheme": "http"
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "appReadyTimeout": 10000,
+      "responseTimeout": 20000,
+      "resetWhenUpdate": true
+    }
   }
 }
