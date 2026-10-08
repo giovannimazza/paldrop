@@ -170,6 +170,14 @@ node scripts/build-apk.mjs   # npm run build + cap sync + assembleDebug
 # -> Paldrop.apk copied to the project root
 ```
 
+Releases are built on CI, not from a laptop: pushing an `apk-<date>` tag
+runs `.github/workflows/release.yml`, which typechecks, tests, builds the
+APK and attaches it to a GitHub Release of that name.
+
+```bash
+git tag apk-$(date -u +%Y-%m-%d) && git push origin --tags
+```
+
 Scanning still happens with the phone camera: in cloud mode it opens the
 hosted send page (so the frontend must be deployed), while in offline mode
 the QR points at the receiving phone's local server.

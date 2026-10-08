@@ -1,0 +1,57 @@
+# Builds the APK on a runner and attaches it to a GitHub Release.
+# Trigger: push an `apk-<date>` tag, or run it by hand from the Actions tab.
+name: Release APK
+
+on:
+  push:
+    tags: ["apk-*", "v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      # Capacitor 8's Gradle plugin needs JDK 21.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - name: Typecheck and test
+        run: |
+          npm run typecheck
+          npm test
+      - name: Build the APK
+        run: node scripts/build-apk.mjs
+        env:
+          PALDROP_PUBLIC_URL: https://giovannimazza.github.io/paldrop/
+      - name: Name the release
+        id: meta
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            tag="apk-$(date -u +%Y-%m-%d)"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "name=Paldrop APK - ${tag#apk-}" >> "$GITHUB_OUTPUT"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="$(git log -1 --pretty=%s)"
+          if gh release view "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            gh release upload "${{ steps.meta.outputs.tag }}" Paldrop.apk --clobber
+          else
+            gh release create "${{ steps.meta.outputs.tag }}" Paldrop.apk \
+              --title "${{ steps.meta.outputs.name }}" \
+              --notes "$notes"
+          fi
