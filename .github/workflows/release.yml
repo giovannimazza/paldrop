@@ -24,13 +24,24 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      # ubuntu-latest ships the Android SDK with its licences accepted, so
-      # ANDROID_HOME is already set; the platform Gradle wants is installed
-      # explicitly because the image does not carry every API level.
-      - name: Install the Android platform and build tools
+      # ubuntu-latest ships the Android SDK with its licences accepted. The
+      # steps below are split fine-grained on purpose: workflow logs are not
+      # always reachable, so which step fails is itself the diagnostic.
+      - name: Resolve ANDROID_HOME
         run: |
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" >/dev/null
-          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          home="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$home" && test -d "$home"
+          echo "ANDROID_HOME=$home" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$home" >> "$GITHUB_ENV"
+      - name: Install API 36 if the image lacks it
+        continue-on-error: true
+        run: |
+          test -d "$ANDROID_HOME/platforms/android-36" && exit 0
+          sdk="$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")"
+          yes | "$sdk" --licenses >/dev/null 2>&1 || true
+          "$sdk" "platforms;android-36" "build-tools;36.0.0"
+      - name: Verify API 36 is available
+        run: test -d "$ANDROID_HOME/platforms/android-36"
       - run: npm ci
       - name: Typecheck and test
         run: |
