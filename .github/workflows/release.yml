@@ -24,7 +24,13 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      # ubuntu-latest ships the Android SDK with its licences accepted, so
+      # ANDROID_HOME is already set; the platform Gradle wants is installed
+      # explicitly because the image does not carry every API level.
+      - name: Install the Android platform and build tools
+        run: |
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" >/dev/null
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
       - run: npm ci
       - name: Typecheck and test
         run: |
