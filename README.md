@@ -91,19 +91,15 @@ convex/
   crons.ts      # cleanup every minute
 src/
   pages/        # Home, Receive, Send, Expired, Privacy, Terms
-  components/   # Layout, Logo, OtaBanner, ErrorBoundary
+  components/   # Layout, Logo, ErrorBoundary
   i18n.tsx      # IT/EN dictionary with browser-language detection
   lib/client.ts # codes, upload with progress, download, formatting
   lib/backend.ts # cloud/offline dual backend (mode detection, ops, polling)
-  lib/ota.ts    # OTA manifest check, bundle download, user-triggered swap
 android/.../local/LocalHttpServer.java  # offline backend served by the APK
 scripts/
   smoke.mjs           # cloud server-side verification suite (32 checks)
   smoke-local.mjs     # offline backend suite (33 checks)
   build-apk.mjs       # web build + cap sync + APK -> Paldrop.apk
-  build-ota-bundle.mjs # OTA bundle zip + manifest -> ota/
-  lib/zip.mjs         # dependency-free ZIP writer
-  lib/version.mjs     # 1.<yymmdd>.<hhmm> bundle version
   upload-photo.mjs    # simulates the sending phone
   make-test-image.mjs # generates a test PNG
 ```
@@ -173,41 +169,6 @@ node scripts/build-apk.mjs   # npm run build + cap sync + assembleDebug
 Scanning still happens with the phone camera: in cloud mode it opens the
 hosted send page (so the frontend must be deployed), while in offline mode
 the QR points at the receiving phone's local server.
-
-## OTA updates
-
-The installed APK updates its web layer over the air, so a typo fix or a new
-screen reaches phones without anyone reinstalling anything. Native changes —
-a new plugin, a permission, the launcher icon — still need a fresh APK.
-
-How it works:
-
-- Every push to `main` builds a second copy of the web app with the APK's
-  settings and publishes two files at the site root:
-  `ota.json` (the manifest) and `paldrop-<version>.zip` (the bundle).
-- The version is `1.<yymmdd>.<hhmm>` in UTC, baked into both the APK and each
-  bundle. An APK only ever picks up bundles published after it was built.
-- On launch, and whenever it comes back to the foreground (at most twice an
-  hour), the app reads the manifest. If it names a newer version it downloads
-  the zip in the background and shows a bar above the footer.
-- The swap happens only when the user taps it. Reloading the WebView in the
-  middle of a transfer would lose the photos in flight, so it is never
-  automatic.
-- The bundle has to sit on the same origin as the manifest and be served over
-  https, so a tampered manifest still cannot point the app elsewhere.
-
-To build the pair by hand:
-
-```bash
-npm run ota:bundle                     # -> ota/ota.json + ota/paldrop-<version>.zip
-PALDROP_OTA_SKIP_BUILD=1 npm run ota:bundle   # repack the existing dist/
-```
-
-The plugin is [`@capgo/capacitor-updater`](https://capgo.app/docs/plugin/self-hosted/getting-started)
-in manual mode: no Capgo account and no server of our own, just two static
-files on GitHub Pages. The trade-off is that the self-hosted path has no
-automatic rollback — if a bundle boots badly, the fix is to publish a newer
-one, or reinstall the APK (which resets to the bundle it ships with).
 
 ## Pages
 

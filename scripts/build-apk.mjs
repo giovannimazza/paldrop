@@ -7,7 +7,6 @@
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { bundleVersion } from "./lib/version.mjs";
 
 const PUBLIC_URL = process.argv[2] ?? process.env.PALDROP_PUBLIC_URL ?? "https://giovannimazza.github.io/paldrop/";
 const isWindows = process.platform === "win32";
@@ -31,10 +30,6 @@ const env = {
     const pad = (n) => String(n).padStart(2, "0");
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   })(),
-  // OTA: the APK knows its own bundle version and where to look for newer
-  // ones, so it only picks up bundles published after this build.
-  VITE_OTA_VERSION: bundleVersion(),
-  VITE_OTA_MANIFEST_URL: (PUBLIC_URL.endsWith("/") ? PUBLIC_URL : PUBLIC_URL + "/") + "ota.json",
   ANDROID_HOME: process.env.ANDROID_HOME ?? resolve(".android-sdk"),
 };
 const javaHome = findJdk21();

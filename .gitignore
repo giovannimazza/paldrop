@@ -13,4 +13,3 @@ dist/
 *.local
 .DS_Store
 logs/
-ota/
