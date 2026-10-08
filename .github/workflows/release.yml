@@ -47,8 +47,20 @@ jobs:
         run: |
           npm run typecheck
           npm test
-      - name: Build the APK
-        run: node scripts/build-apk.mjs
+      - name: Build the web app
+        run: node scripts/build-apk.mjs --stage=web
+        env:
+          PALDROP_PUBLIC_URL: https://giovannimazza.github.io/paldrop/
+      - name: Sync the Android project
+        run: node scripts/build-apk.mjs --stage=sync
+        env:
+          PALDROP_PUBLIC_URL: https://giovannimazza.github.io/paldrop/
+      - name: Compile the APK
+        run: node scripts/build-apk.mjs --stage=gradle
+        env:
+          PALDROP_PUBLIC_URL: https://giovannimazza.github.io/paldrop/
+      - name: Collect the APK
+        run: node scripts/build-apk.mjs --stage=copy
         env:
           PALDROP_PUBLIC_URL: https://giovannimazza.github.io/paldrop/
       - name: Name the release
