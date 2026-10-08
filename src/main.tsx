@@ -5,6 +5,7 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { I18nProvider, useI18n } from "./i18n";
 import { Layout } from "./components/Layout";
 import { App } from "./App";
+import { startOta } from "./lib/ota";
 import "./index.css";
 
 function SetupNotice() {
@@ -27,6 +28,9 @@ const container = document.getElementById("root");
 if (!container) {
   throw new Error("Missing #root element");
 }
+
+// Marks the running bundle as healthy and looks for a newer one (APK only).
+void startOta();
 
 const root = createRoot(container);
 root.render(

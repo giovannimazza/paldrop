@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { hasKey, useI18n, type TKey } from "../i18n";
 import { APP_BUILD } from "../lib/client";
 import { Logo } from "./Logo";
+import { OtaBanner } from "./OtaBanner";
 
 type Status = "active" | "waiting" | "expired" | "closed";
 
@@ -80,6 +81,8 @@ export function Layout({ children }: { children: ReactNode }) {
       </header>
 
       <main className="app-main">{children}</main>
+
+      <OtaBanner />
 
       <footer className="app-footer">
         <Link to="/privacy">{t("nav.privacy")}</Link>

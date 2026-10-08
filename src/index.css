@@ -140,6 +140,22 @@ a {
   padding: 18px 18px 28px;
 }
 
+.ota-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.ota-text {
+  font-size: 14px;
+  color: var(--muted);
+}
+
 .app-footer {
   display: flex;
   align-items: center;
