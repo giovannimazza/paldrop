@@ -2,3 +2,7 @@
 *.png binary
 *.jpg binary
 *.webp binary
+# Never line-ending-normalise archives: it corrupts the Gradle wrapper.
+*.jar binary
+*.apk binary
+*.keystore binary
